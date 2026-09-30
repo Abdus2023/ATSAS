@@ -55,17 +55,21 @@ def evaluate_four_level_oracle(
     ):
         failures.append("AIF-050 (ORACLE_INDEPENDENCE_VIOLATION): Oracle must never derive expected truth from skill output")
 
-    # AIF-049 & AIF-055: Non-Vacuity & Execution Observation check
+    # AIF-049 & AIF-055: Non-Vacuity & Execution Observation check (Phase 15.1.3 & 15.1.9)
     execution_occurred = bool(observed.get("execution_occurred", False))
     observation_produced = bool(observed.get("observation_produced", False))
     obs_cost = observed.get("cost") if isinstance(observed.get("cost"), dict) else {}
     execution_count = obs_cost.get("commands_executed", 1 if execution_occurred else 0)
     raw_observation_present = observation_produced and bool(observed.get("observed_evidence"))
+    exec_state_str = obs_cls.get("execution") if isinstance(obs_cls, dict) else None
+    fake_execution_state = exec_state_str in ("NOT_STARTED", "NOT_EXECUTED")
 
-    if not execution_occurred or execution_count <= 0:
+    if not execution_occurred or fake_execution_state or not observation_produced or not raw_observation_present:
+        failures.append(
+            "AIF-049 (NO_EXECUTION_EVIDENCE): evaluation cannot report behavioral PASS without real execution and raw observation"
+        )
+    if not execution_occurred or fake_execution_state or execution_count <= 0:
         failures.append(f"AIF-055 (VACUOUS_TEST): required execution never occurred (execution_count={execution_count})")
-    if not observation_produced or not raw_observation_present:
-        failures.append("AIF-049 (MISSING_OBSERVATION): required raw observation was not produced")
 
     # Level 1 — Structural: required fields exist, valid types, valid enum values
     l1_errors: List[str] = []
@@ -215,6 +219,16 @@ def compare_suite_against_baseline(
 
     corpus_match = baseline.get("case_corpus_digest") == current_suite.get("case_corpus_digest")
     oracle_match = baseline.get("oracle_digest") == current_suite.get("oracle_digest")
+    evaluator_match = (
+        baseline.get("evaluator_version") is None
+        or current_suite.get("evaluator_version") is None
+        or baseline.get("evaluator_version") == current_suite.get("evaluator_version")
+    )
+    snapshot_match = (
+        baseline.get("skill_commit") is None
+        or current_suite.get("skill_commit") is None
+        or baseline.get("skill_commit") == current_suite.get("skill_commit")
+    )
 
     if not corpus_match:
         return {
@@ -222,6 +236,8 @@ def compare_suite_against_baseline(
             "new_failures": [],
             "corpus_integrity_valid": False,
             "oracle_integrity_valid": oracle_match,
+            "evaluator_integrity_valid": evaluator_match,
+            "skill_snapshot_integrity_valid": snapshot_match,
             "reason": "AIF-051: case_corpus_digest differs from baseline",
         }
     if not oracle_match:
@@ -230,7 +246,29 @@ def compare_suite_against_baseline(
             "new_failures": [],
             "corpus_integrity_valid": True,
             "oracle_integrity_valid": False,
+            "evaluator_integrity_valid": evaluator_match,
+            "skill_snapshot_integrity_valid": snapshot_match,
             "reason": "AIF-051: oracle_digest differs from baseline",
+        }
+    if not evaluator_match:
+        return {
+            "regression_status": "EVALUATOR_MODIFIED",
+            "new_failures": [],
+            "corpus_integrity_valid": True,
+            "oracle_integrity_valid": True,
+            "evaluator_integrity_valid": False,
+            "skill_snapshot_integrity_valid": snapshot_match,
+            "reason": "AIF-051: evaluator_version differs from baseline",
+        }
+    if not snapshot_match:
+        return {
+            "regression_status": "SKILL_SNAPSHOT_MODIFIED",
+            "new_failures": [],
+            "corpus_integrity_valid": True,
+            "oracle_integrity_valid": True,
+            "evaluator_integrity_valid": True,
+            "skill_snapshot_integrity_valid": False,
+            "reason": "AIF-051: skill_commit snapshot differs from baseline",
         }
 
     baseline_pass_ids = set(baseline.get("passing_case_ids", []))
@@ -252,6 +290,8 @@ def compare_suite_against_baseline(
         "new_failures": new_failures,
         "corpus_integrity_valid": True,
         "oracle_integrity_valid": True,
+        "evaluator_integrity_valid": True,
+        "skill_snapshot_integrity_valid": True,
     }
 
 

@@ -67,6 +67,10 @@ def format_markdown_report(
         "",
         f"Phase 15.1 Evaluator Attack Corpus ({attack_res['corpus_id']}):",
         f"  Adversarial Fixtures (EVAL-A049..A055): {detected_attacks}/{attack_res['total_attack_fixtures']} DETECTED",
+        *[
+            f"    {f['invariant_id']} ({f['fixture_id']})  {f.get('assurance_profile', 'BEHAVIORAL + ADVERSARIAL'):<26} {'VERIFIED' if f['detected'] else 'FAILED'}"
+            for f in attack_res["fixtures"]
+        ],
         "",
         "Phase 12 Interface Freeze Boundary:",
         f"  Skills Verified (22)  : {'PASS' if freeze_res['freeze_valid'] else 'FAIL'} ({freeze_res['skill_count']}/22)",

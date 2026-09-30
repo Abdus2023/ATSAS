@@ -194,12 +194,15 @@ def compute_invariant_coverage(
         if not def_present:
             conn_status = "MISSING"
             cov_state = "MISSING"
+            assurance_profile = "MISSING"
         elif struct_present and behav_present and adv_connected and oracle_present:
             conn_status = "BEHAVIORALLY_CONNECTED"
             cov_state = "VERIFIED" if ev_verified else "ADVERSARIAL"
+            assurance_profile = "BEHAVIORAL + MUTATION" if inv_id == "AIF-053" else "BEHAVIORAL + ADVERSARIAL"
         else:
             conn_status = "REFERENCE_PRESENT"
             cov_state = "REFERENCE_ONLY"
+            assurance_profile = "REFERENCE"
 
         coverage.append(
             {
@@ -209,11 +212,14 @@ def compute_invariant_coverage(
                 "detected": detected and (inv_id not in disconnected),
                 "connection_status": conn_status,
                 "coverage_state": cov_state,
+                "assurance_profile": assurance_profile,
                 "layers": {
                     "definition": def_present,
                     "schema": True,
+                    "reference": def_present and oracle_present,
                     "structural_test": struct_present,
                     "behavioral_test": behav_present,
+                    "mutation_sensitivity": adv_connected,
                     "adversarial_mutation": adv_connected,
                     "oracle": oracle_present,
                     "evidence": ev_verified,
@@ -408,6 +414,7 @@ def run_evaluation_suite(
         "suite_version": SUITE_VERSION,
         "skill": skill_filter or "ALL_AIF_SKILLS",
         "skill_version": "0.1.0",
+        "skill_commit": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
         "evaluator_version": EVALUATOR_VERSION,
         "case_corpus_digest": corpus["case_corpus_digest"],
         "oracle_digest": corpus["oracle_digest"],
@@ -496,13 +503,16 @@ def canonical_suite_digest(suite_res: Dict[str, Any]) -> str:
 
 def verify_replay_determinism(inject_nondeterminism: bool = False) -> Dict[str, Any]:
     """
-    Phase 15.5 (AIF-052): Execute R1 = evaluate(S, C, O, E) and R2 = evaluate(S, C, O, E)
-    across shuffled discovery order (`shuffle_seed=42`) and compare `canonical(R1) == canonical(R2)`.
-    When `inject_nondeterminism=True`, perturbs R2 to verify that the replay gate detects
-    and reports `NON_REPRODUCIBLE` (`AIF-052`).
+    Phase 15.5 & 15.1.6 (AIF-052): Execute R1 = evaluate(S, C, O, V) and R2 = evaluate(S, C, O, V)
+    across shuffled discovery order (`shuffle_seed=42`) and different non-semantic timestamps
+    (`generated_at`), comparing `canonical(R1) == canonical(R2)`.
+    When `inject_nondeterminism=True`, perturbs semantic case outcomes in R2 to verify that
+    the replay gate detects and reports `NON_REPRODUCIBLE` (`AIF-052`).
     """
     r1 = run_evaluation_suite(shuffle_seed=None)
     r2 = run_evaluation_suite(shuffle_seed=42)
+    # 15.1.6: A timestamp difference alone does not constitute semantic nondeterminism
+    r2["generated_at"] = "2026-09-30T23:59:59Z"
     if inject_nondeterminism and r2.get("cases"):
         r2 = copy.deepcopy(r2)
         r2["cases"][0]["status"] = "FAIL"
@@ -515,6 +525,7 @@ def verify_replay_determinism(inject_nondeterminism: bool = False) -> Dict[str, 
     return {
         "reproducible": reproducible,
         "status": "REPRODUCIBLE" if reproducible else "NON_REPRODUCIBLE",
+        "timestamp_excluded_from_canonical": r1["generated_at"] != r2["generated_at"],
         "invariant_violation": None if reproducible else "AIF-052",
         "run_1_digest": d1,
         "run_2_digest": d2,
@@ -523,43 +534,69 @@ def verify_replay_determinism(inject_nondeterminism: bool = False) -> Dict[str, 
 
 def run_evaluator_attack_corpus() -> Dict[str, Any]:
     """
-    Phase 15.1 — Build and execute the 7-fixture Evaluator Attack Corpus (EVAL-A049 .. EVAL-A055).
-    Attacks the evaluation layer itself as an untrusted component; each fixture produces
-    observable evidence of failure from real behavioral execution rather than injecting
-    an invariant phrase into `claim_scope`.
+    Phase 15.1 (15.1.1 .. 15.1.12) — Build and execute the 7-fixture Evaluator Attack Corpus
+    (EVAL-A049 .. EVAL-A055) as an additive ADVERSARIAL layer on top of `aif-eval-corpus-0.2`
+    (preserving `aif-eval-corpus-0.2` digests unchanged per 15.1.11).
+
+    For each attack (15.1.1):
+      Known-good fixture -> run evaluator -> PASS / expected result
+      -> introduce one controlled defect -> run evaluator again -> MUST detect defect.
     """
     corpus = discover_corpus()
     by_id = {c["case_id"]: c for c in corpus["cases"]}
     fixtures: List[Dict[str, Any]] = []
 
-    # EVAL-A049 (AIF-049 — No execution observation):
-    # Apparent PASS classification, execution_occurred=True, but observation_produced=False / observed_evidence=[]
-    obs_a049_missing_obs = {
+    # EVAL-A049 (AIF-049 — Fake execution & missing observation, Section 15.1.3):
+    # Stage 1 (Known-good): expected=PASS, execution=COMPLETED, observation=present -> PASS
+    known_good_a049 = {
         "execution_occurred": True,
-        "observation_produced": False,
+        "observation_produced": True,
         "classification": copy.deepcopy(by_id["GREEN-TEST-01"]["expected_classification"]),
-        "observed_evidence": [],
-        "cost": {"commands_executed": 1, "duration_ms": 2},
+        "observed_evidence": [
+            {"kind": rk, "evidence_id": f"ev-a049-{idx}"}
+            for idx, rk in enumerate(by_id["GREEN-TEST-01"].get("required_evidence", []))
+        ],
+        "cost": {"commands_executed": 1, "duration_ms": 3},
     }
-    res_a049 = evaluate_four_level_oracle(by_id["GREEN-TEST-01"], obs_a049_missing_obs)
+    res_a049_good = evaluate_four_level_oracle(by_id["GREEN-TEST-01"], known_good_a049)
+
+    # Stage 2A (Fake execution, 15.1.3): expected=PASS, execution=NOT_STARTED, observation=present (output still looks correct)
+    fake_exec_a049 = copy.deepcopy(known_good_a049)
+    fake_exec_a049["execution_occurred"] = False
+    fake_exec_a049["classification"]["execution"] = "NOT_STARTED"
+    res_a049_fake_exec = evaluate_four_level_oracle(by_id["GREEN-TEST-01"], fake_exec_a049)
+
+    # Stage 2B (Missing observation): expected=PASS, execution=COMPLETED, observation=missing
+    missing_obs_a049 = copy.deepcopy(known_good_a049)
+    missing_obs_a049["observation_produced"] = False
+    missing_obs_a049["observed_evidence"] = []
+    res_a049_missing_obs = evaluate_four_level_oracle(by_id["GREEN-TEST-01"], missing_obs_a049)
+
     a049_detected = (
-        res_a049["status"] == "FAIL"
-        and res_a049["matched"] is False
-        and any("AIF-049" in f for f in res_a049["failures"])
+        res_a049_good["status"] == "PASS"
+        and res_a049_fake_exec["status"] != "PASS"
+        and any("AIF-049" in f for f in res_a049_fake_exec["failures"])
+        and res_a049_missing_obs["status"] != "PASS"
+        and any("AIF-049" in f for f in res_a049_missing_obs["failures"])
     )
     fixtures.append(
         {
             "fixture_id": "EVAL-A049",
+            "category": "ADVERSARIAL",
             "invariant_id": "AIF-049",
-            "attack": "no_execution_observation",
+            "assurance_profile": "BEHAVIORAL + ADVERSARIAL",
+            "attack": "fake_execution_and_no_execution_observation",
+            "known_good_status": res_a049_good["status"],
             "detected": a049_detected,
-            "observed_status": res_a049["status"],
-            "observed_failures": res_a049["failures"],
+            "observed_status": res_a049_fake_exec["status"],
+            "fake_execution_status": res_a049_fake_exec["status"],
+            "missing_observation_status": res_a049_missing_obs["status"],
+            "observed_failures": res_a049_fake_exec["failures"],
         }
     )
 
-    # EVAL-A050 (AIF-050 — Circular oracle / Oracle independence attack, Section 15.6):
-    # 1) Skill says PASS, independent expected truth is NOT_VERIFIED (RED-22) -> oracle must return FAIL
+    # EVAL-A050 (AIF-050 — Circular oracle & independence attack, Section 15.1.4):
+    # Fixture A: skill_output=PASS, independent_expected=FAIL (NOT_VERIFIED on RED-22) -> oracle=FAIL
     skill_says_pass = {
         "execution_occurred": True,
         "observation_produced": True,
@@ -571,8 +608,11 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
         "observed_evidence": [{"kind": "execution_record"}],
         "cost": {"commands_executed": 1},
     }
-    res_a050_pass_vs_fail = evaluate_four_level_oracle(by_id["RED-22"], skill_says_pass)
-    # 2) Skill says FAIL/BLOCKED, independent expected truth is VERIFIED (GREEN-TEST-01) -> oracle returns FAIL & preserves expected
+    res_a050_fixture_a = evaluate_four_level_oracle(by_id["RED-22"], skill_says_pass)
+
+    # Fixture B1 (Known-good match on RED-22): skill_output=NOT_VERIFIED, independent_expected=NOT_VERIFIED -> oracle=PASS
+    res_a050_fixture_b_match = run_evaluation_case(by_id["RED-22"])
+    # Fixture B2: skill_output=FAIL/BLOCKED, independent_expected=VERIFIED (GREEN-TEST-01) -> oracle=FAIL & expected truth unmutated
     green_case_copy = copy.deepcopy(by_id["GREEN-TEST-01"])
     skill_says_fail = {
         "execution_occurred": True,
@@ -585,15 +625,17 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
         "observed_evidence": [{"kind": "execution_record"}],
         "cost": {"commands_executed": 1},
     }
-    res_a050_fail_vs_pass = evaluate_four_level_oracle(green_case_copy, skill_says_fail)
+    res_a050_fixture_b_mismatch = evaluate_four_level_oracle(green_case_copy, skill_says_fail)
     expected_preserved = green_case_copy["expected_classification"]["status"] == "VERIFIED"
-    # 3) Circular Oracle(skill_output, skill_output) where expected_classification is bound to observed.classification
+
+    # Controlled Defect: Circular Oracle(skill_output, skill_output) where expected_classification is bound to observed.classification
     circular_case = copy.deepcopy(by_id["RED-22"])
     circular_case["expected_classification"] = skill_says_pass["classification"]
     res_a050_circular = evaluate_four_level_oracle(circular_case, skill_says_pass)
     a050_detected = (
-        res_a050_pass_vs_fail["status"] == "FAIL"
-        and res_a050_fail_vs_pass["status"] == "FAIL"
+        res_a050_fixture_b_match["status"] == "PASS"
+        and res_a050_fixture_a["status"] == "FAIL"
+        and res_a050_fixture_b_mismatch["status"] == "FAIL"
         and expected_preserved
         and res_a050_circular["status"] == "FAIL"
         and any("AIF-050" in f for f in res_a050_circular["failures"])
@@ -601,50 +643,82 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
     fixtures.append(
         {
             "fixture_id": "EVAL-A050",
+            "category": "ADVERSARIAL",
             "invariant_id": "AIF-050",
+            "assurance_profile": "BEHAVIORAL + ADVERSARIAL",
             "attack": "circular_oracle_and_independence",
+            "known_good_status": res_a050_fixture_b_match["status"],
             "detected": a050_detected,
-            "pass_vs_expected_fail": res_a050_pass_vs_fail["status"],
-            "fail_vs_expected_pass": res_a050_fail_vs_pass["status"],
+            "fixture_a_pass_vs_expected_fail": res_a050_fixture_a["status"],
+            "fixture_b_match_status": res_a050_fixture_b_match["status"],
+            "fixture_b_fail_vs_expected_pass": res_a050_fixture_b_mismatch["status"],
             "circular_oracle_status": res_a050_circular["status"],
             "observed_failures": res_a050_circular["failures"],
         }
     )
 
-    # EVAL-A051 (AIF-051 — Corpus tampering & oracle digest tampering):
+    # EVAL-A051 (AIF-051 — Corpus, oracle, evaluator_version & skill_snapshot tampering, Section 15.1.5):
     suite_clean = run_evaluation_suite()
     baseline_clean = build_baseline(corpus, suite_clean)
+    reg_known_good = compare_suite_against_baseline(baseline_clean, suite_clean)
+
+    # Controlled Defect 1: Mutate one case in corpus (D1 -> D2) without updating baseline
+    mutated_corpus_cases = copy.deepcopy(corpus["cases"])
+    mutated_corpus_cases[0]["description"] = mutated_corpus_cases[0]["description"] + " [TAMPERED]"
+    d2_corpus_digest = sha256_jcs([c["case_id"] + ":" + sha256_jcs(c) for c in mutated_corpus_cases])
     tampered_suite_corpus = copy.deepcopy(suite_clean)
-    tampered_suite_corpus["case_corpus_digest"] = sha256_jcs({"tampered": True})
+    tampered_suite_corpus["case_corpus_digest"] = d2_corpus_digest
     reg_corpus_tamper = compare_suite_against_baseline(baseline_clean, tampered_suite_corpus)
 
+    # Controlled Defect 2: Mutate oracle_digest (O1 -> O2)
     tampered_suite_oracle = copy.deepcopy(suite_clean)
     tampered_suite_oracle["oracle_digest"] = sha256_jcs({"tampered_oracle": True})
     reg_oracle_tamper = compare_suite_against_baseline(baseline_clean, tampered_suite_oracle)
 
+    # Controlled Defect 3: Mutate evaluator_version (V1 -> V2)
+    tampered_suite_eval_ver = copy.deepcopy(suite_clean)
+    tampered_suite_eval_ver["evaluator_version"] = "0.0.1-tampered"
+    reg_eval_ver_tamper = compare_suite_against_baseline(baseline_clean, tampered_suite_eval_ver)
+
+    # Controlled Defect 4: Mutate skill_snapshot / skill_commit (S1 -> S2)
+    tampered_suite_snapshot = copy.deepcopy(suite_clean)
+    tampered_suite_snapshot["skill_commit"] = "0000000000000000000000000000000000000000"
+    reg_snapshot_tamper = compare_suite_against_baseline(baseline_clean, tampered_suite_snapshot)
+
     a051_detected = (
-        reg_corpus_tamper["regression_status"] == "CORPUS_MODIFIED"
+        reg_known_good["regression_status"] == "BASELINE_MATCH"
+        and reg_corpus_tamper["regression_status"] == "CORPUS_MODIFIED"
         and reg_corpus_tamper["corpus_integrity_valid"] is False
         and reg_oracle_tamper["regression_status"] == "ORACLE_MODIFIED"
         and reg_oracle_tamper["oracle_integrity_valid"] is False
+        and reg_eval_ver_tamper["regression_status"] == "EVALUATOR_MODIFIED"
+        and reg_eval_ver_tamper["evaluator_integrity_valid"] is False
+        and reg_snapshot_tamper["regression_status"] == "SKILL_SNAPSHOT_MODIFIED"
+        and reg_snapshot_tamper["skill_snapshot_integrity_valid"] is False
     )
     fixtures.append(
         {
             "fixture_id": "EVAL-A051",
+            "category": "ADVERSARIAL",
             "invariant_id": "AIF-051",
-            "attack": "corpus_and_oracle_tampering",
+            "assurance_profile": "BEHAVIORAL + ADVERSARIAL",
+            "attack": "corpus_oracle_evaluator_and_snapshot_tampering",
+            "known_good_status": reg_known_good["regression_status"],
             "detected": a051_detected,
             "corpus_tamper_status": reg_corpus_tamper["regression_status"],
             "oracle_tamper_status": reg_oracle_tamper["regression_status"],
+            "evaluator_version_tamper_status": reg_eval_ver_tamper["regression_status"],
+            "skill_snapshot_tamper_status": reg_snapshot_tamper["regression_status"],
         }
     )
 
-    # EVAL-A052 (AIF-052 — Nondeterministic replay experiment, Section 15.5):
+    # EVAL-A052 (AIF-052 — Deterministic replay & timestamp exclusion, Section 15.1.6):
     det_replay = verify_replay_determinism(inject_nondeterminism=False)
     nondet_replay = verify_replay_determinism(inject_nondeterminism=True)
     a052_detected = (
         det_replay["reproducible"] is True
         and det_replay["status"] == "REPRODUCIBLE"
+        and det_replay["timestamp_excluded_from_canonical"] is True
         and nondet_replay["reproducible"] is False
         and nondet_replay["status"] == "NON_REPRODUCIBLE"
         and nondet_replay["invariant_violation"] == "AIF-052"
@@ -652,16 +726,21 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
     fixtures.append(
         {
             "fixture_id": "EVAL-A052",
+            "category": "ADVERSARIAL",
             "invariant_id": "AIF-052",
+            "assurance_profile": "BEHAVIORAL + ADVERSARIAL",
             "attack": "nondeterministic_replay",
+            "known_good_status": det_replay["status"],
             "detected": a052_detected,
             "clean_replay": det_replay["status"],
+            "timestamp_excluded_from_canonical": det_replay["timestamp_excluded_from_canonical"],
             "perturbed_replay": nondet_replay["status"],
             "invariant_violation": nondet_replay["invariant_violation"],
         }
     )
 
-    # EVAL-A053 (AIF-053 — Strong behavioral mutation across all 7 invariant families, Sections 15.3 & 15.4):
+    # EVAL-A053 (AIF-053 — Real behavioral mutation across all 7 invariant families, Section 15.1.7):
+    known_good_a053_passed = suite_clean["failed"] == 0 and suite_clean["passed"] == len(suite_clean["cases"])
     critical_mutations = [
         ("CRITICAL_MUT_AUTHORITY", "CRITICAL_MUTATION", {"RED-01", "RED-02", "RED-04", "P-08"}),
         ("CRITICAL_MUT_SCOPE_ATTRIBUTION", "CRITICAL_MUTATION", {"RED-04", "RED-05", "RED-37", "P-02", "COMPLETE-09"}),
@@ -672,7 +751,7 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
         ("CRITICAL_MUT_EVALUATOR_ORACLE", "CRITICAL_MUTATION", {"RED-13", "RED-19", "RED-22", "RED-24"}),
     ]
     mutation_Kill_details: Dict[str, Any] = {}
-    all_mutations_killed = True
+    all_mutations_killed = known_good_a053_passed
     for mut_name, mut_class, expected_flip_subset in critical_mutations:
         mut_suite = run_evaluation_suite(mutation_mode=mut_name)
         flipped_ids = {c["case_id"] for c in mut_suite["cases"] if c["status"] == "FAIL"}
@@ -687,15 +766,18 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
     fixtures.append(
         {
             "fixture_id": "EVAL-A053",
+            "category": "ADVERSARIAL",
             "invariant_id": "AIF-053",
+            "assurance_profile": "BEHAVIORAL + MUTATION",
             "attack": "semantic_behavioral_mutation_across_families",
+            "known_good_status": "PASS" if known_good_a053_passed else "FAIL",
             "detected": all_mutations_killed,
             "families_tested": len(critical_mutations),
             "mutation_results": mutation_Kill_details,
         }
     )
 
-    # EVAL-A054 (AIF-054 — Trigger inversion & keyword-only over-broad trigger attack, Section 15.7):
+    # EVAL-A054 (AIF-054 — Trigger inversion & keyword-only over-broad trigger attack, Section 15.1.8):
     trig_canonical = evaluate_triggers(mode="CANONICAL")
     trig_keyword = evaluate_triggers(mode="KEYWORD_ONLY")
     trig_inverted = evaluate_triggers(mode="INVERTED")
@@ -710,8 +792,11 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
     fixtures.append(
         {
             "fixture_id": "EVAL-A054",
+            "category": "ADVERSARIAL",
             "invariant_id": "AIF-054",
+            "assurance_profile": "BEHAVIORAL + ADVERSARIAL",
             "attack": "trigger_inversion_and_keyword_overtrigger",
+            "known_good_status": "PASS" if all(t["status"] == "PASS" for t in trig_canonical) else "FAIL",
             "detected": a054_detected,
             "canonical_pass_count": sum(1 for t in trig_canonical if t["status"] == "PASS"),
             "keyword_false_positives": kw_fp_ids,
@@ -719,33 +804,36 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
         }
     )
 
-    # EVAL-A055 (AIF-055 — Zero-execution / vacuous pass attack, Section 15.8):
-    # Attack: expected=PASS (GREEN-TEST-01), observed output looks completely valid, but execution_count=0
-    zero_exec_obs = {
-        "execution_occurred": True,  # Lies about execution_occurred flag while commands_executed == 0
+    # EVAL-A055 (AIF-055 — Zero-execution / vacuous pass attack, Section 15.1.9):
+    # Stage 1 (Known-good): execution_count=1 + raw_observation=present + oracle=matching -> PASS
+    valid_exec_obs = {
+        "execution_occurred": True,
         "observation_produced": True,
         "classification": copy.deepcopy(by_id["GREEN-TEST-01"]["expected_classification"]),
         "observed_evidence": [
             {"kind": rk, "evidence_id": f"ev-green-{idx}"}
             for idx, rk in enumerate(by_id["GREEN-TEST-01"].get("required_evidence", []))
         ],
-        "cost": {"commands_executed": 0, "duration_ms": 0},
+        "cost": {"commands_executed": 1, "duration_ms": 4},
     }
-    res_a055_zero = evaluate_four_level_oracle(by_id["GREEN-TEST-01"], zero_exec_obs)
-    # Control: execution_count=1 + raw observation present + oracle matches -> PASS
-    valid_exec_obs = copy.deepcopy(zero_exec_obs)
-    valid_exec_obs["cost"] = {"commands_executed": 1, "duration_ms": 4}
     res_a055_valid = evaluate_four_level_oracle(by_id["GREEN-TEST-01"], valid_exec_obs)
+    # Stage 2 (Controlled defect — strongest fake): expected_observation=correct, observed_output=correct, oracle=matching, execution_count=0 -> FAIL
+    zero_exec_obs = copy.deepcopy(valid_exec_obs)
+    zero_exec_obs["cost"] = {"commands_executed": 0, "duration_ms": 0}
+    res_a055_zero = evaluate_four_level_oracle(by_id["GREEN-TEST-01"], zero_exec_obs)
     a055_detected = (
-        res_a055_zero["status"] == "FAIL"
+        res_a055_valid["status"] == "PASS"
+        and res_a055_zero["status"] == "FAIL"
         and any("AIF-055" in f for f in res_a055_zero["failures"])
-        and res_a055_valid["status"] == "PASS"
     )
     fixtures.append(
         {
             "fixture_id": "EVAL-A055",
+            "category": "ADVERSARIAL",
             "invariant_id": "AIF-055",
+            "assurance_profile": "BEHAVIORAL + ADVERSARIAL",
             "attack": "zero_execution_vacuous_pass",
+            "known_good_status": res_a055_valid["status"],
             "detected": a055_detected,
             "zero_execution_status": res_a055_zero["status"],
             "control_execution_status": res_a055_valid["status"],

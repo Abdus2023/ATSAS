@@ -36,15 +36,31 @@ Previously, `mut_aif_034`..`mut_aif_055` in [`tests/aif-v01-red-suite.py`](../..
 1. Built the **7 executable adversarial fixtures `EVAL-A049` .. `EVAL-A055`** in [`.claude/skills/skill-evaluation-harness/scripts/run_suite.py`](../skills/skill-evaluation-harness/scripts/run_suite.py) (`run_evaluator_attack_corpus()`) and [`.claude/skills/skill-evaluation-harness/scripts/compare_result.py`](../skills/skill-evaluation-harness/scripts/compare_result.py).
 2. Upgraded [`bin/aif-verify`](../../bin/aif-verify) (`validate_canonical_data_model_bundle`) and [`tests/aif-v01-red-suite.py`](../../tests/aif-v01-red-suite.py) (`mut_aif_034`..`mut_aif_055`) so every mutator mutates structured behavioral state (`supply_chain_state`, `receipt_state`, `evaluation_harness_state`) without touching `claim_scope`.
 
-| Fixture ID | Invariant | Adversarial Attack | Specific Malformed Execution State $\to$ Evaluator Invocation $\to$ Observed Failure $\to$ Oracle Classification | Status |
-|---|---|---|---|---|
-| **`EVAL-A049`** | `AIF-049` | **No execution observation** | `GREEN-TEST-01` (`expected=PASS`) invoked via `evaluate_four_level_oracle(GREEN-TEST-01, obs)` with `execution_occurred=True, commands_executed=1`, **but `observation_produced=False, observed_evidence=[]`** $\to$ `status=FAIL, matched=False` $\to$ `AIF-049 (MISSING_OBSERVATION)` | `DETECTED` |
-| **`EVAL-A050`** | `AIF-050` | **Circular oracle & independence** | 1) `Skill=PASS` vs `Independent=NOT_VERIFIED` (`RED-22`) $\to$ `FAIL`; 2) `Skill=BLOCKED` vs `Independent=VERIFIED` (`GREEN-TEST-01`) $\to$ `FAIL` (expected truth unmutated); 3) Circular `Oracle(skill_output, skill_output)` (`expected_classification is observed.classification` or `derive_oracle_from_self=True`) $\to$ `FAIL` (`AIF-050 ORACLE_INDEPENDENCE_VIOLATION`) | `DETECTED` |
-| **`EVAL-A051`** | `AIF-051` | **Corpus & oracle tampering** | 1) Live in-memory tamper of `cases.yaml` (`red_cases: 40` vs `41` actual) $\to$ `load_cases_yaml` raises `CORPUS_INTEGRITY_ERROR`; 2) Tampered `case_corpus_digest` against baseline $\to$ `CORPUS_MODIFIED` (`corpus_integrity_valid=False`); 3) Tampered `oracle_digest` $\to$ `ORACLE_MODIFIED` (`oracle_integrity_valid=False`) | `DETECTED` |
-| **`EVAL-A052`** | `AIF-052` | **Nondeterministic replay** | 1) `R1 = run_evaluation_suite(S, C, O, E)` vs `R2 = run_evaluation_suite(S, C, O, E, shuffle_seed=42)` (shuffled discovery order) $\to$ `canonical_suite_digest(R1) == canonical_suite_digest(R2)` (`REPRODUCIBLE`); 2) Perturbed replay `R2_perturbed` $\to$ `verify_replay_determinism(R1, R2_perturbed)` reports `NON_REPRODUCIBLE` (`AIF-052`) | `DETECTED` |
-| **`EVAL-A053`** | `AIF-053` | **Strong semantic mutation** | Executes `baseline -> CRITICAL_MUTATION -> re-evaluation -> flip detection` across all 7 invariant families in `run_case.py`: `CRITICAL_MUT_AUTHORITY` (`4` flipped), `CRITICAL_MUT_SCOPE_ATTRIBUTION` (`12` flipped), `CRITICAL_MUT_PRODUCER_CI` (`6` flipped), `CRITICAL_MUT_TEST_EXEC` (`63` flipped), `CRITICAL_MUT_SUPPLY_CHAIN` (`3` flipped), `CRITICAL_MUT_RECEIPT_GATE` (`21` flipped), `CRITICAL_MUT_EVALUATOR_ORACLE` (`4` flipped) | `DETECTED` (`7/7` families) |
-| **`EVAL-A054`** | `AIF-054` | **Trigger inversion & keyword over-trigger** | Evaluates 7-fixture positive/negative matrix (`clear_trigger`, `keyword_wrong_semantics`, `adversarial_wording`, `minimal_valid_trigger`, `near_miss`, `unrelated_request`, `completion_gate`). Attacks `KEYWORD_ONLY` classifier (catches false positives on `TRIG-02-KEYWORD-WRONG-SEMANTICS`, `TRIG-05-NEAR-MISS`, `TRIG-06-UNRELATED`) and `INVERTED` classifier (`7/7` fail) | `DETECTED` |
-| **`EVAL-A055`** | `AIF-055` | **Zero-execution / vacuous pass** | 1) Attack: `GREEN-TEST-01` (`expected=PASS`), valid classification & evidence list, `execution_occurred=True`, **but `cost.commands_executed = 0`** $\to$ `FAIL` (`AIF-055 VACUOUS_TEST: execution_count=0`); 2) Control: `commands_executed = 1` + raw observation + oracle match $\to$ `PASS` | `DETECTED` |
+| Fixture ID | Invariant | Known-Good Baseline (`15.1.1`) | Controlled Defect Attack (`15.1.3`–`15.1.9`) $\to$ Observed Failure $\to$ Oracle Classification | Assurance Profile (`15.1.12`) | Status |
+|---|---|---|---|---|---|
+| **`EVAL-A049`** | `AIF-049` | `expected=PASS, execution=COMPLETED, observation=present -> PASS` | **Stage 2A (Fake execution, `15.1.3`)**: `expected=PASS, execution=NOT_STARTED, observation=present` (output still looks correct) $\to$ `status=FAIL != PASS`, `AIF-049 (NO_EXECUTION_EVIDENCE)`. **Stage 2B (Missing observation)**: `observation_produced=False, observed_evidence=[]` $\to$ `status=FAIL`, `AIF-049` | `BEHAVIORAL + ADVERSARIAL` | `VERIFIED` |
+| **`EVAL-A050`** | `AIF-050` | **Fixture B1**: `skill_output=NOT_VERIFIED, independent_expected=NOT_VERIFIED (RED-22) -> oracle=PASS` | **Fixture A (`15.1.4`)**: `skill_output=PASS, independent_expected=FAIL -> oracle=FAIL`. **Fixture B2**: `skill_output=FAIL, independent_expected=PASS -> oracle=FAIL` (expected truth preserved). **Circular Attack**: `Oracle(skill_output, skill_output)` $\to$ `FAIL` (`AIF-050 ORACLE_INDEPENDENCE_VIOLATION`) | `BEHAVIORAL + ADVERSARIAL` | `VERIFIED` |
+| **`EVAL-A051`** | `AIF-051` | `D1, O1, V1, S1 -> BASELINE_MATCH` | **All 4 Baseline Binding Attacks (`15.1.5`)**: 1) Case modified `D1 -> D2` $\to$ `CORPUS_MODIFIED`; 2) `O1 -> O2` $\to$ `ORACLE_MODIFIED`; 3) `V1 -> V2` $\to$ `EVALUATOR_MODIFIED`; 4) `S1 -> S2` $\to$ `SKILL_SNAPSHOT_MODIFIED`; 5) `cases.yaml` count tamper $\to$ `CORPUS_INTEGRITY_ERROR` | `BEHAVIORAL + ADVERSARIAL` | `VERIFIED` |
+| **`EVAL-A052`** | `AIF-052` | `R1 = evaluate(S,C,O,V)` vs `R2 = evaluate(S,C,O,V, shuffle_seed=42, generated_at=different)` $\to$ `canonical(R1) == canonical(R2)` (`REPRODUCIBLE`, timestamp excluded per `15.1.6`) | **Controlled Defect**: Perturb semantic case result in `R2` $\to$ `verify_replay_determinism` reports `NON_REPRODUCIBLE` (`AIF-052`) | `BEHAVIORAL + ADVERSARIAL` | `VERIFIED` |
+| **`EVAL-A053`** | `AIF-053` | Original implementation $\to$ `79/79` protected cases `PASS` | **Real Behavioral Mutations (`15.1.7`)** across all 7 invariant families in `run_case.py` (`UNKNOWN -> VERIFIED`, `snapshot mismatch -> MATCH`, etc.): `CRITICAL_MUT_AUTHORITY` (`4` flipped), `CRITICAL_MUT_SCOPE_ATTRIBUTION` (`12` flipped), `CRITICAL_MUT_PRODUCER_CI` (`6` flipped), `CRITICAL_MUT_TEST_EXEC` (`63` flipped), `CRITICAL_MUT_SUPPLY_CHAIN` (`3` flipped), `CRITICAL_MUT_RECEIPT_GATE` (`21` flipped), `CRITICAL_MUT_EVALUATOR_ORACLE` (`4` flipped) | `BEHAVIORAL + MUTATION` | `VERIFIED` (`7/7` families) |
+| **`EVAL-A054`** | `AIF-054` | `T1 SHOULD_TRIGGER -> PASS`, `T2 SHOULD_NOT_TRIGGER -> PASS`, `near_miss -> SHOULD_NOT_TRIGGER PASS` (`7/7 PASS`) | **Trigger Inversion & Keyword Attacks (`15.1.8`)**: `INVERTED` classifier (`T1 -> FAIL`, `T2 -> FAIL`, `7/7` fail) & `KEYWORD_ONLY` classifier (`near_miss` `TRIG-05` & `TRIG-02` $\to$ false-positive `FAIL`) | `BEHAVIORAL + ADVERSARIAL` | `VERIFIED` |
+| **`EVAL-A055`** | `AIF-055` | `execution_count=1, raw_observation=present, oracle=matching -> PASS` | **Strongest Zero-Execution Fake (`15.1.9`)**: `expected_observation=correct, observed_output=correct, oracle=matching, execution_count=0` $\to$ `FAIL` (`AIF-055 VACUOUS_TEST: execution_count=0`) | `BEHAVIORAL + ADVERSARIAL` | `VERIFIED` |
+
+### 2.1.1 Corpus Versioning Discipline (`15.1.11`)
+
+In accordance with Section `15.1.11`, `aif-eval-corpus-0.2` (`case_corpus_digest = sha256:b288f19ff6ccb633cda544b602aadd7fb01bb1cfffeec169b0ade639d618dc5c`) is preserved unchanged, and `EVAL-A049`..`EVAL-A055` are registered as the additive `ADVERSARIAL` layer (`aif-evaluator-attack-corpus-v1`) in `skill-evaluation-harness` (`C-08`).
+
+### 2.1.2 Release-Gate Consequence (`15.1.12`)
+
+```text
+AIF-049 (EVAL-A049)  BEHAVIORAL + ADVERSARIAL   VERIFIED
+AIF-050 (EVAL-A050)  BEHAVIORAL + ADVERSARIAL   VERIFIED
+AIF-051 (EVAL-A051)  BEHAVIORAL + ADVERSARIAL   VERIFIED
+AIF-052 (EVAL-A052)  BEHAVIORAL + ADVERSARIAL   VERIFIED
+AIF-053 (EVAL-A053)  BEHAVIORAL + MUTATION      VERIFIED
+AIF-054 (EVAL-A054)  BEHAVIORAL + ADVERSARIAL   VERIFIED
+AIF-055 (EVAL-A055)  BEHAVIORAL + ADVERSARIAL   VERIFIED
+```
 
 ---
 
@@ -197,8 +213,11 @@ Every one of the **63 normative rules** (`55` primary invariants + `8` sub-invar
 ## 5. Gate Status Summary
 
 ```text
-Phase 13  NORMALIZATION        VERIFIED
-Phase 14  EXECUTION            VERIFIED
-Phase 15  ADVERSARIAL REVIEW   VERIFIED (EVAL-A049..EVAL-A055 7/7 DETECTED; 63/63 BEHAVIORALLY_CONNECTED)
-Phase 16  RELEASE GATE         READY FOR EVALUATION
+Phase 13    NORMALIZATION            VERIFIED
+Phase 14    EXECUTION                VERIFIED
+Phase 15.1  ATTACK CORPUS DESIGN     DEFINED  (EVAL-A049..EVAL-A055)
+Phase 15.2  ATTACK IMPLEMENTATION    VERIFIED (Known-good -> PASS -> Controlled defect -> DETECTED)
+Phase 15.3  FRESH EXECUTION          VERIFIED (7/7 evaluator attacks detected; 153/153 kernel & RED suite; 121/121 runner checks)
+Phase 15.4  GAP REASSESSMENT         VERIFIED (63/63 rules BEHAVIORALLY_CONNECTED & VERIFIED)
+Phase 16    RELEASE GATE             READY FOR EVALUATION
 ```
