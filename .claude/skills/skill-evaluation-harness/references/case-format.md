@@ -6,12 +6,12 @@
 
 ---
 
-## 1. First-Class `EvaluationCase` Contract (`11.3`)
+## 1. First-Class `EvaluationCase` Contract (`11.3` & `15.1.11`)
 
 ```text
 EvaluationCase {
     case_id
-    category              # RED | GREEN | PRESSURE | REGRESSION
+    category              # RED | GREEN | PRESSURE | REGRESSION | ADVERSARIAL
     target_skill
     description
     preconditions
@@ -32,10 +32,10 @@ EvaluationCase {
 
 ---
 
-## 2. Corpus Organization by Layer (`11.20`–`11.21`)
+## 2. Corpus Organization by Layer (`11.20`–`11.21` & `15.1.11`)
 
 ```text
-AIF Evaluation Corpus (aif-eval-corpus-0.2)
+AIF Evaluation Corpus (aif-eval-corpus-0.2 + aif-eval-corpus-0.3 ADVERSARIAL layer)
 │
 ├── Authority / Intake
 │   ├── RED-01..04
@@ -65,9 +65,20 @@ AIF Evaluation Corpus (aif-eval-corpus-0.2)
 │   ├── RECEIPT-01..12
 │   └── P-03, P-05
 │
-└── Completion Gate
-    └── COMPLETE-01..10
+├── Completion Gate
+│   └── COMPLETE-01..10
+│
+└── Evaluator Attack (`ADVERSARIAL` — Phase 15.1, `aif-eval-corpus-0.3` layer)
+    ├── EVAL-A049 (AIF-049 fake execution / missing observation)
+    ├── EVAL-A050 (AIF-050 circular oracle / independence)
+    ├── EVAL-A051 (AIF-051 corpus, oracle, evaluator & snapshot tampering)
+    ├── EVAL-A052 (AIF-052 deterministic replay & timestamp exclusion)
+    ├── EVAL-A053 (AIF-053 real behavioral mutation across 7 families)
+    ├── EVAL-A054 (AIF-054 trigger inversion & near-miss keyword attack)
+    └── EVAL-A055 (AIF-055 zero-execution vacuous pass)
 ```
+
+**Corpus Versioning Discipline (`15.1.11`)**: `aif-eval-corpus-0.2` (`case_corpus_digest = sha256:b288f19ff6ccb633cda544b602aadd7fb01bb1cfffeec169b0ade639d618dc5c`) is never silently mutated; the 7 `ADVERSARIAL` cases (`EVAL-A049`..`EVAL-A055`) are content-addressed in the explicit `aif-eval-corpus-0.3` `adversarial_cases` extension (`discover_cases.py --category ADVERSARIAL`).
 
 ---
 

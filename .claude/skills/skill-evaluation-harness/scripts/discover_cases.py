@@ -487,12 +487,20 @@ def discover_corpus() -> Dict[str, Any]:
 
     case_digests = [c["case_digest"] for c in cases]
     oracle_rules = [{"case_id": c["case_id"], "oracle": c["oracle"]} for c in cases]
+    adv_cases = build_adversarial_evaluator_cases()
+    adv_digests = [c["case_digest"] for c in adv_cases]
 
     return {
         "suite": {
             "id": SUITE_ID,
             "corpus_id": CORPUS_ID,
             "version": SUITE_VERSION,
+            "next_revision": {
+                "corpus_id": "aif-eval-corpus-0.3",
+                "version": "0.3",
+                "migration": "Adds 7 ADVERSARIAL evaluator-attack cases (EVAL-A049..EVAL-A055) while preserving aif-eval-corpus-0.2 case_corpus_digest unchanged (15.1.11).",
+                "adversarial_corpus_digest": sha256_jcs(adv_digests),
+            },
         },
         "case_corpus_digest": sha256_jcs(case_digests),
         "oracle_digest": sha256_jcs(oracle_rules),
@@ -501,23 +509,133 @@ def discover_corpus() -> Dict[str, Any]:
             "PRESSURE": sum(1 for c in cases if c["category"] == "PRESSURE"),
             "GREEN": sum(1 for c in cases if c["category"] == "GREEN"),
             "REGRESSION": sum(1 for c in cases if c["category"] == "REGRESSION"),
+            "ADVERSARIAL": len(adv_cases),
             "total": len(cases),
         },
         "cases": cases,
+        "adversarial_cases": adv_cases,
     }
+
+
+def build_adversarial_evaluator_cases() -> List[Dict[str, Any]]:
+    """
+    Phase 15.1 (15.1.2 & 15.1.11): First-class EvaluationCase definitions for the 7 mandatory
+    evaluator-attack fixtures (EVAL-A049 .. EVAL-A055) in the ADVERSARIAL corpus layer.
+    """
+    specs = [
+        (
+            "EVAL-A049",
+            "AIF-049",
+            "Remove actual execution evidence (execution=NOT_STARTED or missing raw observation) while output looks correct -> evaluation cannot report behavioral PASS.",
+            {"attack": "fake_execution_and_no_execution_observation", "known_good": {"execution": "COMPLETED", "observation": "present"}, "defect": {"execution": "NOT_STARTED", "observation": "present"}},
+            {"status": "FAIL", "evidence_present": False, "completion_allowed": False},
+            "evaluator.must_reject_fake_or_unobserved_execution",
+            ["execution_record", "observation_record"],
+            ["status=PASS"],
+            "TEST_NOT_EXECUTED",
+        ),
+        (
+            "EVAL-A050",
+            "AIF-050",
+            "Make oracle consume skill output as expected truth (Fixture A: skill=PASS/expected=FAIL -> FAIL; Fixture B: skill=FAIL/expected=PASS -> FAIL; Oracle(skill_output, skill_output) blocked).",
+            {"attack": "circular_oracle_and_independence", "fixture_a": {"skill_output": "PASS", "independent_expected": "FAIL"}, "fixture_b": {"skill_output": "FAIL", "independent_expected": "PASS"}},
+            {"status": "FAIL", "evidence_present": False, "completion_allowed": False},
+            "oracle.must_never_derive_truth_from_skill_output",
+            ["verification_record"],
+            ["expected_source=SKILL_OUTPUT"],
+            "EVIDENCE_INCOMPLETE",
+        ),
+        (
+            "EVAL-A051",
+            "AIF-051",
+            "Modify one corpus case after baseline (D1->D2) or tamper with oracle_digest, evaluator_version, or skill_snapshot -> CORPUS_MODIFIED / ORACLE_MODIFIED / EVALUATOR_MODIFIED / SKILL_SNAPSHOT_MODIFIED.",
+            {"attack": "corpus_oracle_evaluator_and_snapshot_tampering", "bindings_tested": ["case_corpus_digest", "oracle_digest", "evaluator_version", "skill_commit"]},
+            {"status": "CORPUS_MODIFIED", "evidence_present": False, "completion_allowed": False},
+            "baseline.must_bind_corpus_oracle_evaluator_and_snapshot",
+            ["evidence_ref"],
+            ["regression_status=BASELINE_MATCH"],
+            "ARTIFACT_MISMATCH",
+        ),
+        (
+            "EVAL-A052",
+            "AIF-052",
+            "Repeat identical evaluation with shuffled order & different timestamp (canonical(R1)==canonical(R2)), then introduce semantic nondeterminism -> NON_REPRODUCIBLE.",
+            {"attack": "nondeterministic_replay", "canonical_excludes_timestamp": True},
+            {"status": "NON_REPRODUCIBLE", "evidence_present": False, "completion_allowed": False},
+            "replay.must_be_canonically_reproducible",
+            ["verification_record"],
+            ["status=REPRODUCIBLE"],
+            "ARTIFACT_MISMATCH",
+        ),
+        (
+            "EVAL-A053",
+            "AIF-053",
+            "Weaken protected skill behavior across all 7 invariant families (UNKNOWN->VERIFIED, snapshot mismatch->MATCH, etc.) -> previously protected cases fail.",
+            {"attack": "semantic_behavioral_mutation_across_families", "families": 7},
+            {"status": "MUTATION_DETECTED", "evidence_present": True, "completion_allowed": False},
+            "mutation.critical_behavioral_mutations_must_flip_protected_cases",
+            ["verification_record"],
+            ["failed_count=0"],
+            "TEST_FAILED",
+        ),
+        (
+            "EVAL-A054",
+            "AIF-054",
+            "Invert trigger classification (T1 SHOULD_TRIGGER, T2 SHOULD_NOT_TRIGGER) and test near-miss keyword fixture -> trigger error detected.",
+            {"attack": "trigger_inversion_and_keyword_overtrigger", "fixtures": ["T1_SHOULD_TRIGGER", "T2_SHOULD_NOT_TRIGGER", "NEAR_MISS_KEYWORD"]},
+            {"status": "TRIGGER_MISCLASSIFICATION_DETECTED", "evidence_present": True, "completion_allowed": False},
+            "trigger.must_distinguish_semantic_intent_from_keywords",
+            ["observation_record"],
+            ["false_positive=False"],
+            "TEST_FAILED",
+        ),
+        (
+            "EVAL-A055",
+            "AIF-055",
+            "Supply plausible output with zero execution (execution_count=0, expected_observation=correct, observed_output=correct) -> PASS rejected as vacuous; execution_count=1 -> PASS.",
+            {"attack": "zero_execution_vacuous_pass", "execution_count": 0},
+            {"status": "FAIL", "evidence_present": False, "completion_allowed": False},
+            "non_vacuity.zero_execution_must_never_pass",
+            ["execution_record"],
+            ["status=PASS"],
+            "TEST_NOT_EXECUTED",
+        ),
+    ]
+    out: List[Dict[str, Any]] = []
+    for cid, inv, desc, inp, exp_cls, rule_id, req_ev, forb, fail_state in specs:
+        out.append(
+            build_evaluation_case(
+                cid,
+                "ADVERSARIAL",
+                "skill-evaluation-harness",
+                desc,
+                inp,
+                exp_cls,
+                rule_id,
+                [inv],
+                required_evidence=req_ev,
+                forbidden_inferences=forb,
+                expected_failure_state=fail_state,
+                layer="Evaluator Attack (Phase 15.1)",
+            )
+        )
+    return out
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Discover content-addressed AIF evaluation cases.")
-    parser.add_argument("--category", choices=["RED", "GREEN", "PRESSURE", "REGRESSION"], help="Filter by category")
+    parser.add_argument("--category", choices=["RED", "GREEN", "PRESSURE", "REGRESSION", "ADVERSARIAL"], help="Filter by category")
     parser.add_argument("--skill", help="Filter by target_skill")
     parser.add_argument("--summary", action="store_true", help="Print human-readable corpus summary")
     args = parser.parse_args()
 
     corpus = discover_corpus()
-    cases = corpus["cases"]
-    if args.category:
-        cases = [c for c in cases if c["category"] == args.category]
+    if args.category == "ADVERSARIAL":
+        cases = corpus["adversarial_cases"]
+    else:
+        cases = corpus["cases"]
+        if args.category:
+            cases = [c for c in cases if c["category"] == args.category]
     if args.skill:
         cases = [c for c in cases if c["target_skill"] == args.skill]
 
@@ -525,6 +643,7 @@ def main() -> int:
         print(f"Suite      : {corpus['suite']['id']} v{corpus['suite']['version']} ({corpus['suite']['corpus_id']})")
         print(f"Corpus SHA : {corpus['case_corpus_digest']}")
         print(f"Oracle SHA : {corpus['oracle_digest']}")
+        print(f"Adversarial: {len(corpus['adversarial_cases'])} cases (aif-eval-corpus-0.3 layer: {corpus['suite']['next_revision']['adversarial_corpus_digest']})")
         print(f"Selected   : {len(cases)} cases")
         return 0
 
