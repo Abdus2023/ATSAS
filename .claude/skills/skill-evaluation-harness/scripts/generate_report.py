@@ -41,6 +41,11 @@ def format_markdown_report(
     green_c = cat.get("GREEN", {"total": 0, "PASS": 0, "FAIL": 0})
     detected_attacks = sum(1 for f in attack_res["fixtures"] if f["detected"])
 
+    inv_cov = suite_res.get("invariant_coverage", [])
+    behav_conn = sum(1 for ic in inv_cov if ic.get("connection_status") == "BEHAVIORALLY_CONNECTED")
+    ref_only = sum(1 for ic in inv_cov if ic.get("connection_status") == "REFERENCE_PRESENT")
+    verified_cov = sum(1 for ic in inv_cov if ic.get("coverage_state") == "VERIFIED")
+
     lines = [
         "AIF SKILL EVALUATION HARNESS REPORT",
         "",
@@ -55,6 +60,10 @@ def format_markdown_report(
         f"  {pres_c['total']:2d} PRESSURE: {pres_c['PASS']:2d} PASS  {pres_c['FAIL']:2d} FAIL",
         f"  {green_c['total']:2d} GREEN:    {green_c['PASS']:2d} PASS  {green_c['FAIL']:2d} FAIL",
         f"  Total Cases: {suite_res['passed']} PASS, {suite_res['failed']} FAIL, {suite_res['not_observable']} NOT_OBSERVABLE",
+        "",
+        "Phase 15.2 & 15.11 Invariant Connection & Coverage State (63 Normative Rules, no numerical score):",
+        f"  BEHAVIORALLY_CONNECTED : {behav_conn}/{len(inv_cov)} (Coverage State VERIFIED: {verified_cov})",
+        f"  REFERENCE_PRESENT      : {ref_only}/{len(inv_cov)}",
         "",
         f"Phase 15.1 Evaluator Attack Corpus ({attack_res['corpus_id']}):",
         f"  Adversarial Fixtures (EVAL-A049..A055): {detected_attacks}/{attack_res['total_attack_fixtures']} DETECTED",

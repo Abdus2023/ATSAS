@@ -28,9 +28,9 @@ Behavioral, adversarial, mutation, trigger, and regression evaluation harness fo
 # Discover content-addressed evaluation corpus (aif-eval-corpus-0.2)
 python3 .claude/skills/skill-evaluation-harness/scripts/discover_cases.py
 
-# Run Phase 11 & Phase 12 comprehensive self-test suite
+# Run Phase 11, Phase 12 & Phase 15.1 comprehensive self-test suite (EVAL-01..13, EVAL-A049..A055)
 python3 .claude/skills/skill-evaluation-harness/scripts/run_suite.py --self-test
 
-# Generate raw human-readable evaluation report
+# Generate raw human-readable evaluation report (including Phase 15.1 Evaluator Attack Corpus)
 python3 .claude/skills/skill-evaluation-harness/scripts/generate_report.py
 ```

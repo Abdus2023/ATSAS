@@ -135,11 +135,29 @@ See [`references/regression.md`](./references/regression.md) and [`references/ad
 
 ---
 
-## 5. Mutation Sensitivity, Semantic Coverage, Trigger & Cost Evaluation (`11.15`–`11.19`)
+## 5. Mutation Sensitivity, Semantic Coverage, Trigger & Cost Evaluation (`11.15`–`11.19`, `Phase 15`)
 
-- **Mutation Testing (`11.15`, `AIF-053`)**: Intentionally weakens skill implementations (e.g., `UNKNOWN → PASS` or removing snapshot mismatch checks) and verifies that designated RED/TEST/COMPLETE cases (`RED-20`, `RED-28`, `RED-41`, `TEST-07`, `COMPLETE-06`) fail.
-- **Semantic Invariant Coverage (`11.16`)**: Tracks `InvariantCoverage { invariant_id, cases[], exercised, detected }` across `AIF-001`..`AIF-055`.
-- **Trigger & Trigger-Pressure Evaluation (`11.17`–`11.18`, `AIF-054`)**: Evaluates `SHOULD TRIGGER` vs `SHOULD NOT TRIGGER` as well as authority/scope interpretation under ambiguous prompts (`"Can you take a quick look at CI?"` $\to$ `INSPECT_ONLY` vs `"Verify whether CI passed for this exact commit."` $\to$ verification intent).
+- **Mutation Classes & Sensitivity (`11.15`, `15.3`–`15.4`, `AIF-053`, `EVAL-A053`)**:
+  Distinguishes three explicit mutation classes:
+  - `STRUCTURAL_MUTATION` — changes representation without changing semantics.
+  - `BEHAVIORAL_MUTATION` — changes executable semantics.
+  - `CRITICAL_MUTATION` — targets a behavior that the evaluator claims to protect across all 7 invariant families (`Authority 001–004`, `Snapshots/Scope 005–009/021–025`, `Evidence/Verification/Producers/CI 010–018/026–028`, `Execution/Completion 019–020/029–033`, `Supply Chain 034–040`, `Receipts/Gate 041–048`, `Evaluator/Oracle 049–055`).
+  Executes the full chain: `baseline evaluator execution -> critical behavior mutation -> re-evaluation -> observable result differs -> oracle detects failure`.
+- **Semantic Invariant Coverage & Connection States (`11.16`, `15.2`, `15.11`)**:
+  Tracks the 7-layer assurance chain (`Definition -> Schema -> Structural test -> Behavioral test -> Adversarial mutation -> Oracle -> Evidence`) with explicit non-numerical states:
+  - Connection status: `REFERENCE_PRESENT` vs `BEHAVIORALLY_CONNECTED`
+  - Coverage state: `MISSING | REFERENCE_ONLY | STRUCTURAL | BEHAVIORAL | ADVERSARIAL | VERIFIED` (no numerical score).
+- **Trigger & Trigger-Pressure Evaluation (`11.17`–`11.18`, `15.7`, `AIF-054`, `EVAL-A054`)**:
+  Evaluates the positive/negative trigger matrix (`clear trigger -> SHOULD_TRIGGER`, `near miss -> SHOULD_NOT_TRIGGER`, `unrelated request -> SHOULD_NOT_TRIGGER`, `adversarial wording -> SHOULD_TRIGGER`, `wording with trigger keyword but wrong semantics -> SHOULD_NOT_TRIGGER`, `minimal valid trigger -> SHOULD_TRIGGER`) and proves `trigger correctness != keyword detection`.
+- **Phase 15.1 Evaluator Attack Corpus (`EVAL-A049` .. `EVAL-A055`)**:
+  Attacks the evaluator itself as an untrusted component across `AIF-049..AIF-055` without injecting violation phrases into `claim_scope`:
+  - `EVAL-A049`: No execution observation (`AIF-049`)
+  - `EVAL-A050`: Circular oracle & independence attack (`AIF-050`)
+  - `EVAL-A051`: Corpus & oracle tampering (`AIF-051`)
+  - `EVAL-A052`: Nondeterministic replay experiment (`AIF-052`)
+  - `EVAL-A053`: Semantic behavioral mutation across all 7 invariant families (`AIF-053`)
+  - `EVAL-A054`: Trigger inversion & keyword over-trigger attack (`AIF-054`)
+  - `EVAL-A055`: Zero-execution / vacuous pass attack (`AIF-055`)
 - **Cost Evaluation (`11.19`)**: Records `duration`, `commands_executed`, `files_read`, `network_calls`, and `tokens_if_available` against explicit budgets without collapsing into a quality score.
 
 ---
