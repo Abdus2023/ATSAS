@@ -1,7 +1,27 @@
 # .claude/skills/_shared/aif/tests/cases.yaml
+# Document Class: EXECUTABLE-CONFORMANCE
 # AIF-0.1.0 Canonical 49-Case Behavioral Specification (41 RED + 8 PRESSURE) & First RED Gate
 aif_version: "0.1.0"
 description: "AIF-0.1.0 49-case behavioral test specification (41 RED + 8 PRESSURE) and First RED Gate."
+
+corpus:
+  corpus_id: "aif-behavioral-v1"
+  red_cases: 41
+  pressure_cases: 8
+  green_cases: 0
+  total_cases: 49
+
+invariant_range:
+  primary: "AIF-001..AIF-055"
+  sub_invariants:
+    - AIF-001A
+    - AIF-002A
+    - AIF-003A
+    - AIF-004A
+    - AIF-005A
+    - AIF-006A
+    - AIF-008A
+    - AIF-014A
 
 first_red_gate:
   gate_id: FIRST-RED-GATE

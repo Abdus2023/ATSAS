@@ -1,5 +1,6 @@
 # AIF-0.1 Snapshot & Attribution Contract (`snapshots.md`)
 
+- **Document Class**: `NORMATIVE`
 - **Protocol Version**: `0.1.0` ([`VERSION`](./VERSION))
 - **Governing Invariants**: `AIF-002`, `AIF-002A`, `AIF-003`, `AIF-003A`, `AIF-014`, `AIF-015`
 - **Canonical Schema**: [`schema/snapshot-ref.schema.json`](./schema/snapshot-ref.schema.json)

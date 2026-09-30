@@ -1,5 +1,12 @@
 # Arena Assurance Interface v0.1 — Canonical Data Model (Semantic Kernel)
 
+```text
+Document Class: HISTORICAL
+Protocol: AIF-0.1.0
+Evaluated Snapshot: 15f7fa01778f06821d1c5c9c285bb0d666e04f8b
+Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE (Normative authority is .claude/skills/_shared/aif/)
+```
+
 > **Status**: Semantic Boundaries `VERIFIED` · State Families `VERIFIED` · Snapshot Taxonomy `VERIFIED` · Core Object Models `PROVISIONAL → FREEZE CANDIDATE`  
 > **Scope**: `ARENA_GENERIC` (Domain-agnostic across all Arena repositories; zero StreamForge-specific domain coupling)  
 > **Companion Artifacts**: [`.claude/assurance/aif-v01-freeze-review.md`](./aif-v01-freeze-review.md), [`.claude/assurance/component-contracts.md`](./component-contracts.md), [`.claude/assurance/semantic-kernel-layout-review.md`](./semantic-kernel-layout-review.md), [`schemas/aif-canonical-data-model.schema.json`](../../schemas/aif-canonical-data-model.schema.json)

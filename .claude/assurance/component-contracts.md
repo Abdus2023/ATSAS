@@ -1,5 +1,12 @@
 # Normative Interface Contracts (`C-01` – `C-08`), Shared `EvidenceRef` & AIF v0.1 Freeze Specification
 
+```text
+Document Class: HISTORICAL
+Protocol: AIF-0.1.0
+Evaluated Snapshot: 15f7fa01778f06821d1c5c9c285bb0d666e04f8b
+Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE (Normative authority is .claude/skills/_shared/aif/)
+```
+
 > **Status**: `AIF v0.1 FREEZE CANDIDATE — Hardened via Adversarial Freeze Review`
 > **Scope**: `ARENA_GENERIC`
 > **Core Rule**: `RESULT ≠ EVIDENCE ≠ DECISION` — Every assurance component exposes the same conceptual envelope (`SkillInput → Observation / execution → SkillResult → Evidence references → State classification`), and **only `C-07 arena-completion-gate` makes the final completion decision**.

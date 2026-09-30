@@ -1,5 +1,12 @@
 # Arena Assurance Evidence & Skill Evaluation Schemas (v0.1)
 
+```text
+Document Class: HISTORICAL
+Protocol: AIF-0.1.0
+Evaluated Snapshot: 15f7fa01778f06821d1c5c9c285bb0d666e04f8b
+Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE (Normative authority is .claude/skills/_shared/aif/schema/)
+```
+
 > **Status**: `PROVISIONAL` (PHASE 2 & PHASE 3 Design Artifact)
 > **Scope**: `ARENA_GENERIC`
 > **Machine Schemas**: `schemas/aif-evidence-receipt.schema.json`, `schemas/aif-skill-eval-receipt.schema.json`

@@ -1,7 +1,8 @@
 # AIF-0.1 State Dimensions (`states.md`)
 
+- **Document Class**: `NORMATIVE`
 - **Protocol Version**: `0.1.0` ([`VERSION`](./VERSION))
-- **Governing Invariants**: `AIF-001`, `AIF-004`, `AIF-005`, `AIF-006`, `AIF-008`, `AIF-009`
+- **Governing Invariants**: `AIF-001` .. `AIF-055`
 
 State dimensions in `AIF-0.1` are orthogonal. No value in one table implies a value in another table without an explicit `AIF-0.1` transition rule and supporting evidence.
 

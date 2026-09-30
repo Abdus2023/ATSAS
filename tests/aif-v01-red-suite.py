@@ -2,12 +2,16 @@
 """
 tests/aif-v01-red-suite.py — Canonical AIF-0.1.0 Kernel, 63-Invariant & 49-Case Behavioral Verification Suite.
 
+Document Class: EXECUTABLE-CONFORMANCE
+Protocol: AIF-0.1.0
+
 Proves the 6 AIF-0.1.0 freeze facts:
   1. AIF-0.1.0 contract exists in .claude/skills/_shared/aif/ with the exact minimal layout
      (VERSION == 0.1.0, 7 docs, 13 schemas in schema/, 3 files in tests/, 10 producer contracts, and 0 runtime code files).
   2. All 13 schemas in .claude/skills/_shared/aif/schema/ validate structurally (encoding the 14 core Semantic Kernel types).
   3. All 49 behavioral cases (41 RED + 8 PRESSURE) and the First RED Gate are represented in tests/cases.yaml.
-  4. All 55 primary invariants (AIF-001 .. AIF-055) + 8 sub-invariants (AIF-001A .. AIF-014A) = 63 rules map to executable tests.
+  4. All 55 primary invariants (AIF-001 .. AIF-055) + 8 enumerated A-suffixed sub-invariants
+     (AIF-001A, AIF-002A, AIF-003A, AIF-004A, AIF-005A, AIF-006A, AIF-008A, AIF-014A) = 63 rules map to executable tests.
   5. All RED cases and the First RED Gate fail under intentionally unsafe behavior.
   6. Pressure cases and reasoning-path traps cannot be satisfied by textual assertions.
 """
@@ -47,17 +51,45 @@ def load_cases_yaml(path: Path) -> Dict[str, Any]:
     current: Dict[str, Any] | None = None
     section: str | None = None
     list_key: str | None = None
+    top_section: str | None = None
+    aif_version_val: str = ""
+    corpus_meta: Dict[str, Any] = {}
+    invariant_range_meta: Dict[str, Any] = {"sub_invariants": []}
 
     def unquote(val: str) -> Any:
         val = val.strip()
         if val.startswith('"') or val.startswith("["):
             return json.loads(val)
+        if val.isdigit():
+            return int(val)
         return val
 
     for raw in text.splitlines():
         if not raw.strip() or raw.lstrip().startswith("#"):
             continue
+        if not raw.startswith(" ") and raw.endswith(":"):
+            top_section = raw.strip()[:-1]
+            continue
+        if not raw.startswith(" ") and ": " in raw:
+            k, v = raw.split(": ", 1)
+            if k.strip() == "aif_version":
+                aif_version_val = str(unquote(v))
+            top_section = None
+            continue
+        if top_section == "corpus" and raw.startswith("  ") and not raw.startswith("    ") and ": " in raw:
+            k, v = raw.strip().split(": ", 1)
+            corpus_meta[k] = unquote(v)
+            continue
+        if top_section == "invariant_range":
+            if raw.startswith("  ") and not raw.startswith("    ") and ": " in raw:
+                k, v = raw.strip().split(": ", 1)
+                invariant_range_meta[k] = unquote(v)
+                continue
+            if raw.startswith("    - "):
+                invariant_range_meta["sub_invariants"].append(unquote(raw.strip()[2:]))
+                continue
         if raw.startswith("  - test_id: "):
+            top_section = "cases"
             if current is not None:
                 cases.append(current)
             current = {
@@ -107,7 +139,9 @@ def load_cases_yaml(path: Path) -> Dict[str, Any]:
         cases.append(current)
 
     return {
-        "aif_version": "0.1.0",
+        "aif_version": aif_version_val,
+        "corpus": corpus_meta,
+        "invariant_range": invariant_range_meta,
         "first_red_gate": {
             "expected_invariant_violations": ["AIF-001", "AIF-003", "AIF-003A", "AIF-018"],
         },
@@ -658,8 +692,49 @@ def main() -> int:
         return b
 
     cases = corpus_doc.get("cases", [])
-    if len(cases) != 49:
-        err(f"Expected 49 behavioral cases (41 RED + 8 PRESSURE) in tests/cases.yaml, found {len(cases)}")
+    corpus_meta = corpus_doc.get("corpus", {})
+    inv_range_meta = corpus_doc.get("invariant_range", {})
+    actual_red = sum(1 for c in cases if str(c.get("test_id", "")).startswith("RED-"))
+    actual_pressure = sum(
+        1 for c in cases if str(c.get("test_id", "")).startswith("P-") or c.get("category") == "pressure"
+    )
+    actual_green = sum(1 for c in cases if str(c.get("test_id", "")).startswith("GREEN-"))
+    actual_total = len(cases)
+    expected_sub_invs = [
+        "AIF-001A",
+        "AIF-002A",
+        "AIF-003A",
+        "AIF-004A",
+        "AIF-005A",
+        "AIF-006A",
+        "AIF-008A",
+        "AIF-014A",
+    ]
+    if (
+        corpus_doc.get("aif_version") != "0.1.0"
+        or corpus_meta.get("corpus_id") != "aif-behavioral-v1"
+        or corpus_meta.get("red_cases") != actual_red
+        or actual_red != 41
+        or corpus_meta.get("pressure_cases") != actual_pressure
+        or actual_pressure != 8
+        or corpus_meta.get("green_cases") != actual_green
+        or actual_green != 0
+        or corpus_meta.get("total_cases") != actual_total
+        or actual_total != 49
+        or inv_range_meta.get("primary") != "AIF-001..AIF-055"
+        or inv_range_meta.get("sub_invariants") != expected_sub_invs
+    ):
+        err(
+            f"CORPUS_INTEGRITY_ERROR (AIF-051): declared corpus metadata {corpus_meta} / {inv_range_meta} "
+            f"!= actual counts (red={actual_red}, pressure={actual_pressure}, green={actual_green}, total={actual_total}) "
+            f"or runner expectation (41 RED + 8 PRESSURE + 0 GREEN = 49)"
+        )
+    else:
+        ok(
+            "Self-describing corpus authority verified (corpus_id=aif-behavioral-v1: "
+            "declared count == actual count == runner expectation == 41 RED + 8 PRESSURE + 0 GREEN = 49; "
+            "primary=AIF-001..AIF-055; sub_invariants=AIF-001A,002A,003A,004A,005A,006A,008A,014A)"
+        )
 
     covered_invariants: Set[str] = set()
     for fx in cases:
@@ -706,18 +781,31 @@ def main() -> int:
                 f"neg={neg_oracle['matched']}, trap={trap_oracle['matched']}, pos={pos_oracle['matched']}"
             )
 
-    # 5. Verify 55-Invariant Coverage Matrix (AIF-001 .. AIF-055)
+    # 5. Verify 55-Invariant Coverage Matrix (AIF-001 .. AIF-055) + 8 Enumerated Sub-Invariants
     primary_20 = {f"AIF-{i:03d}" for i in range(1, 21)}
     all_55 = {f"AIF-{i:03d}" for i in range(1, 56)}
+    defined_sub_8 = {
+        "AIF-001A",
+        "AIF-002A",
+        "AIF-003A",
+        "AIF-004A",
+        "AIF-005A",
+        "AIF-006A",
+        "AIF-008A",
+        "AIF-014A",
+    }
     tested_in_red_cases = {inv_id for _, inv_id, _ in red_cases}
     missing_invs = sorted(primary_20 - covered_invariants)
     missing_55 = sorted(all_55 - tested_in_red_cases)
-    if not missing_invs and not missing_55:
+    missing_sub_8 = sorted(defined_sub_8 - tested_in_red_cases)
+    if not missing_invs and not missing_55 and not missing_sub_8:
         ok(
-            "All 55 primary invariants (AIF-001 .. AIF-055) + 8 sub-invariants verified in RED mutator suite and tests/cases.yaml"
+            "All 55 primary invariants (AIF-001 .. AIF-055) + 8 enumerated A-suffixed sub-invariants "
+            "(AIF-001A, AIF-002A, AIF-003A, AIF-004A, AIF-005A, AIF-006A, AIF-008A, AIF-014A) "
+            "verified in RED mutator suite and tests/cases.yaml"
         )
     else:
-        err(f"Missing invariant coverage: cases.yaml={missing_invs}, mutators={missing_55}")
+        err(f"Missing invariant coverage: cases.yaml={missing_invs}, mutators={missing_55}, sub={missing_sub_8}")
 
     # 5B. Phase 5 — AIF Evidence Producer Adapter 15-Case Test Suite (ADP-01 .. ADP-15)
     def run_evidence_adapter(raw: Dict[str, Any]) -> Dict[str, Any]:

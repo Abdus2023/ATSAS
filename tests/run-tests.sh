@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Document Class: EXECUTABLE-CONFORMANCE
+# Protocol: AIF-0.1.0
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -191,6 +193,34 @@ for t_name in canonical_types:
 invariants_md = Path(".claude/skills/_shared/aif/invariants.md").read_text(encoding="utf-8")
 for i in range(1, 56):
     assert f"### `AIF-{i:03d}`" in invariants_md, f"Missing AIF-{i:03d} in .claude/skills/_shared/aif/invariants.md"
+for sub_id in ("AIF-001A", "AIF-002A", "AIF-003A", "AIF-004A", "AIF-005A", "AIF-006A", "AIF-008A", "AIF-014A"):
+    assert f"Sub-Invariant `{sub_id}`" in invariants_md, f"Missing {sub_id} in .claude/skills/_shared/aif/invariants.md"
+
+for norm_file in ("README.md", "invariants.md", "states.md", "snapshots.md", "evidence.md", "compatibility.md"):
+    norm_text = Path(f".claude/skills/_shared/aif/{norm_file}").read_text(encoding="utf-8")
+    assert "NORMATIVE" in norm_text, f"Missing Document Class NORMATIVE in .claude/skills/_shared/aif/{norm_file}"
+
+for exec_file in (
+    ".claude/skills/_shared/aif/tests/README.md",
+    ".claude/skills/_shared/aif/tests/oracle.md",
+    ".claude/skills/_shared/aif/tests/cases.yaml",
+    "bin/aif-verify",
+    "tests/aif-v01-red-suite.py",
+    "tests/run-tests.sh",
+):
+    exec_text = Path(exec_file).read_text(encoding="utf-8")
+    assert "EXECUTABLE-CONFORMANCE" in exec_text, f"Missing Document Class EXECUTABLE-CONFORMANCE in {exec_file}"
+
+compat_text = Path(".agent/tools/aif-red-suite").read_text(encoding="utf-8")
+assert "COMPATIBILITY" in compat_text, "Missing Document Class COMPATIBILITY in .agent/tools/aif-red-suite"
+
+for hist_file in (
+    ".claude/assurance/phase12-interface-freeze-audit.md",
+    ".claude/assurance/aif-v01-freeze-review.md",
+):
+    hist_text = Path(hist_file).read_text(encoding="utf-8")
+    assert "Document Class: HISTORICAL" in hist_text, f"Missing Document Class: HISTORICAL in {hist_file}"
+    assert "Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE" in hist_text, f"Missing HISTORICAL currentness notice in {hist_file}"
 PY
 then
   pass "All 14 core Semantic Kernel Types (across 13 modular schemas), 8 contracts (C-01..C-08), 55 invariants (AIF-001..055) + 8 sub-invariants, and layout review verified"

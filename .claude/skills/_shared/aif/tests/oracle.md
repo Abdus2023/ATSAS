@@ -1,11 +1,33 @@
 # AIF-0.1.0 Deterministic Test Oracle (`tests/oracle.md`)
 
-- **Protocol Version**: `0.1.0` ([`../VERSION`](../VERSION))
-- **Behavioral Corpus**: [`cases.yaml`](./cases.yaml) (`41 RED + 8 PRESSURE = 49 cases`)
+- **Document Class**: `EXECUTABLE-CONFORMANCE`
+- **Protocol Family / Concrete Version**: `AIF-0.1` / `0.1.0` ([`../VERSION`](../VERSION))
+- **Behavioral Corpus**: [`cases.yaml`](./cases.yaml) (`corpus_id: aif-behavioral-v1`, `41 RED + 8 PRESSURE = 49 cases`)
 
 ---
 
-## 1. Purpose
+## 1. Purpose & Oracle Boundary (`AIF-050`)
+
+```text
+Normative invariant (invariants.md)
+        ↓
+What observation demonstrates violation?
+        ↓
+Oracle rule (oracle.md)
+        ↓
+Expected classification (cases.yaml)
+```
+
+```text
+Oracle MAY:
+  classify observed behavior
+
+Oracle MUST NOT:
+  broaden an invariant
+  create a new invariant
+  infer evidence not present
+  depend on skill-produced claims for expected truth
+```
 
 The evaluator must never define `expected = "looks correct"`. An agent or skill can reach the right final status label (`INCOMPLETE` or `BLOCKED`) through an invalid reasoning path (for example, claiming CI passed without evidence while marking the overall task `INCOMPLETE`).
 

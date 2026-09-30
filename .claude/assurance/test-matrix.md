@@ -1,5 +1,12 @@
 # Arena Assurance Test Matrix — v0.1 (42 Behavioral Cases)
 
+```text
+Document Class: HISTORICAL
+Protocol: AIF-0.1.0
+Evaluated Snapshot: 15f7fa01778f06821d1c5c9c285bb0d666e04f8b
+Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE (Normative corpus is .claude/skills/_shared/aif/tests/cases.yaml [49 cases])
+```
+
 > **Status**: `PROVISIONAL → STRONG` (Source of Truth from which Assurance Skills & Adapters are Derived)
 > **Scope**: `ARENA_GENERIC`
 > **Coverage**: 34 Domain Behavioral Cases (`AAI-001` – `AAI-034`) + 8 Adversarial Pressure Cases (`P-001` – `P-008`) = **42 Cases**

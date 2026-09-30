@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-aif-verify — Reference Schema & Normative Invariant Validator for ATSAS and AIF-0.1 (`0.1.0`).
+aif-verify — Reference Schema & Normative Invariant Validator
 
-Zero-dependency portable CLI that validates:
-  1. Structural conformance against the JSON Schemas in schemas/ and .claude/skills/_shared/aif/schema/ (13 modular schemas)
-  2. Semantic conformance against the AIF Assurance Invariants:
-     - AIF-001 .. AIF-055 (55 primary invariants) + 8 sub-invariants (AIF-001A .. AIF-014A) = 63 normative rules
-     - AIF-INV-001 .. AIF-INV-008 & AAI-001 .. AAI-011
+Document Class: EXECUTABLE-CONFORMANCE
+Protocol: AIF-0.1.0
+
+Validates:
+  1. structural conformance against the AIF-0.1.0 schemas (13 modular schemas in .claude/skills/_shared/aif/schema/ and schemas/)
+  2. semantic conformance against AIF-001..AIF-055
+  3. defined A-suffixed sub-invariants (AIF-001A, AIF-002A, AIF-003A, AIF-004A, AIF-005A, AIF-006A, AIF-008A, AIF-014A)
 
 Usage:
   ./bin/aif-verify <manifest-or-contract.json> [--schema <schema.json>] [--json]
@@ -310,8 +312,9 @@ def validate_canonical_data_model_bundle(
     bundle: Dict[str, Any],
 ) -> List[Tuple[str, str]]:
     """
-    Validate semantic invariants AIF-001 .. AIF-020 (+ sub-invariants AIF-001A .. AIF-014A)
-    on an AIFCanonicalDataModelBundle (AIF v0.1 Semantic Kernel).
+    Validate semantic invariants AIF-001 .. AIF-055 (+ defined sub-invariants
+    AIF-001A, AIF-002A, AIF-003A, AIF-004A, AIF-005A, AIF-006A, AIF-008A, AIF-014A)
+    on an AIFCanonicalDataModelBundle (AIF-0.1.0 Semantic Kernel).
     """
     violations: List[Tuple[str, str]] = []
 

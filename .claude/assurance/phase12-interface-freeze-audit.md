@@ -1,6 +1,13 @@
 # Phase 12 — Cross-Skill Consolidation, Responsibility Freeze & Branch Audit (Historical Snapshot)
 
-> **HISTORICAL SNAPSHOT NOTICE (`AIF-041` & `AIF-047`)**: This document records the Phase-12 audit captured against snapshot `HEAD = 15f7fa01778f06821d1c5c9c285bb0d666e04f8b` (working tree `DIRTY`) prior to commit `ea231253dc6e2b0a04bd58282bf4f1e515c8009a`. Per `AIF-047` (*Historical Snapshot Preservation*), its execution claims (`145/145 PASS`, `22/22 PASS`) remain bound to that historical pre-commit snapshot and must not be treated as verification evidence for later commits. See [`.claude/assurance/phase13-consistency-normalization-audit.md`](./phase13-consistency-normalization-audit.md) for the current-snapshot normalization and fresh execution verification.
+```text
+Document Class: HISTORICAL
+Protocol: AIF-0.1.0
+Evaluated Snapshot: 15f7fa01778f06821d1c5c9c285bb0d666e04f8b
+Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE
+```
+
+> **HISTORICAL SNAPSHOT NOTICE (`AIF-041` & `AIF-047`)**: This document records the Phase-12 audit captured against snapshot `HEAD = 15f7fa01778f06821d1c5c9c285bb0d666e04f8b` (working tree `DIRTY`) prior to commit `ea231253dc6e2b0a04bd58282bf4f1e515c8009a`. Per `AIF-047` (*Historical Snapshot Preservation*), its execution claims (`144/144 PASS`, `22/22 PASS`) remain bound to that historical pre-commit snapshot and must not be treated as verification evidence for later commits. See [`.claude/assurance/phase13-consistency-normalization-audit.md`](./phase13-consistency-normalization-audit.md) for the current-snapshot normalization and fresh execution verification.
 
 - **Protocol Family / Version**: `AIF-0.1` / `0.1.0` ([`../skills/_shared/aif/VERSION`](../skills/_shared/aif/VERSION))
 - **Historical Evaluated Snapshot**: `arena/01a0ecca-atsas` (`HEAD = 15f7fa01778f06821d1c5c9c285bb0d666e04f8b`, `working_tree_state = DIRTY`)
@@ -100,7 +107,7 @@ NO OTHER SKILL may silently perform either role.
 - **Attribution Freeze (`12.15`)**:
   - `PREEXISTING | AGENT_ATTRIBUTED | EXTERNAL_ATTRIBUTED | GENERATED | UNATTRIBUTED | UNKNOWN` (`git diff ≠ agent attribution`).
 - **Frozen `AIF-CORE 0.1` Invariants (`12.19`)**:
-  - Controlled set: `AIF-001 .. AIF-055` (plus 8 sub-invariants `AIF-001A .. AIF-014A` = `63` normative rules in [`../skills/_shared/aif/invariants.md`](../skills/_shared/aif/invariants.md)). Any future invariant beyond `AIF-055` must enter as `PROPOSED` until a new AIF version is cut.
+  - Controlled set: `AIF-001 .. AIF-055` (plus 8 enumerated sub-invariants `AIF-001A, AIF-002A, AIF-003A, AIF-004A, AIF-005A, AIF-006A, AIF-008A, AIF-014A` = `63` normative rules in [`../skills/_shared/aif/invariants.md`](../skills/_shared/aif/invariants.md)). Any future invariant beyond `AIF-055` must enter as `PROPOSED` until a new AIF version is cut.
 
 ---
 
@@ -111,7 +118,7 @@ NO OTHER SKILL may silently perform either role.
 | **Branch** | `arena/01a0ecca-atsas` | `git status -sb` |
 | **`HEAD` Commit at Capture** | `15f7fa01778f06821d1c5c9c285bb0d666e04f8b` (`Initial commit`) | `git log -n 1 --oneline` |
 | **Working Tree State at Capture** | `DIRTY` (`M README.md` + untracked directories `.claude/`, `bin/`, `schemas/`, `spec/`, `examples/`, `tests/`, `.agent/` prior to commit `ea231253dc6e2b0a04bd58282bf4f1e515c8009a`) | `git status --short` |
-| **`.claude/skills/_shared/aif/` Kernel** | `PRESENT` & `VERIFIED` (`VERSION = 0.1.0`, 7 docs, 13 modular JSON schemas, 3 test files with 49 behavioral cases in `cases.yaml`, 10 producer contracts, 0 runtime code files) | `python3 tests/aif-v01-red-suite.py` (`145/145 PASS` at historical capture) |
+| **`.claude/skills/_shared/aif/` Kernel** | `PRESENT` & `VERIFIED` (`VERSION = 0.1.0`, 7 docs, 13 modular JSON schemas, 3 test files with 49 behavioral cases in `cases.yaml`, 10 producer contracts, 0 runtime code files) | `python3 tests/aif-v01-red-suite.py` (`144/144 PASS` at historical capture) |
 | **`.claude/skills/` Inventory** | `22` validated skills (`14` imported StreamForge skills + `8` Wave-1 AIF skills `C-01`..`C-08`) | `validate_skill.py --all .claude/skills` (`22/22 PASS` at historical capture) |
 | **GitHub Actions / CI Observability** | `.github/workflows/` is `NOT PRESENT` on this branch (`CI_CONFIGURED = NOT_OBSERVED`, `CI_EXECUTED = NOT_OBSERVED`, `CI_PASSED = NOT_OBSERVED`). | `ci-workflow-audit` (`NOT_FOUND` observation) |
 

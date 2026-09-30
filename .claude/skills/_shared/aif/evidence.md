@@ -1,7 +1,8 @@
 # AIF-0.1 Evidence, Claim, Acceptance & Receipt Contract (`evidence.md`)
 
+- **Document Class**: `NORMATIVE`
 - **Protocol Version**: `0.1.0` ([`VERSION`](./VERSION))
-- **Governing Invariants**: `AIF-006` .. `AIF-020`
+- **Governing Invariants**: `AIF-006` .. `AIF-048`
 
 ---
 

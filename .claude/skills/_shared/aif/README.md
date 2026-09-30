@@ -1,5 +1,8 @@
 # Arena Invariant Framework (`AIF-0.1`) — Shared Semantic Kernel
 
+- **Document Class**: `NORMATIVE`
+- **Protocol Family / Concrete Version**: `AIF-0.1` / `0.1.0` ([`VERSION`](./VERSION))
+
 **AIF defines the semantics and evidence boundaries used by repository-governed agent workflows; it does not authorize agents, execute commands, modify repositories, or declare work complete by itself.**
 
 ---
@@ -33,7 +36,7 @@ Completion gate:
 .claude/skills/_shared/aif/
 ├── VERSION                                    # 0.1.0
 ├── README.md                                  # Kernel boundary & division of responsibilities
-├── invariants.md                              # 55 primary invariants (AIF-001 .. AIF-055) + 8 sub-invariants (63 rules)
+├── invariants.md                              # 55 primary invariants (AIF-001 .. AIF-055) + 8 enumerated A-suffixed sub-invariants (AIF-001A..006A, 008A, 014A)
 ├── states.md                                  # Orthogonal state dimensions (Authority, Admission, Execution, Evidence, Verification, Completion)
 ├── snapshots.md                               # 5-snapshot contract (comparison_base, intake, execution, verification, current) & dirty-tree attribution
 ├── evidence.md                                # EvidenceRef, narrow Claim, AcceptanceExpression & Receipt immutability

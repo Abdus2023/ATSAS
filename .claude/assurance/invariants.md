@@ -1,5 +1,12 @@
 # Arena Assurance Invariants (v0.1 — 11 Executable Invariants)
 
+```text
+Document Class: HISTORICAL
+Protocol: AIF-0.1.0
+Evaluated Snapshot: 15f7fa01778f06821d1c5c9c285bb0d666e04f8b
+Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE (Normative authority is .claude/skills/_shared/aif/invariants.md)
+```
+
 > **Status**: `PROVISIONAL` (PHASE 0 Artifact — Locked prior to Skill Evaluation Harness and Skill Authoring)
 > **Scope**: `ARENA_GENERIC`
 

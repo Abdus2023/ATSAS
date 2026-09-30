@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-.agent/tools/aif-red-suite — Canonical AIF-0.1.0 Kernel & RED Suite Wrapper.
+.agent/tools/aif-red-suite — Canonical AIF-0.1.0 Kernel & RED Suite Compatibility Wrapper.
+
+Document Class: COMPATIBILITY
+Protocol: AIF-0.1.0
 
 Upgraded in Phase 13 to eliminate two-generation test runner drift:
   - Verifies that both `.claude/skills/_shared/aif/VERSION` and
     `.agent/skills/_shared/aif/VERSION` equal `"0.1.0"`.
   - Delegates execution to the single canonical AIF-0.1.0 kernel & behavioral
     verification suite at `tests/aif-v01-red-suite.py` (13 modular schemas,
-    63 executable invariant tests covering AIF-001..AIF-055 + 8 sub-invariants,
+    63 executable invariant tests covering AIF-001..AIF-055 + 8 enumerated A-suffixed sub-invariants
+    [AIF-001A, AIF-002A, AIF-003A, AIF-004A, AIF-005A, AIF-006A, AIF-008A, AIF-014A],
     49 behavioral cases in cases.yaml [41 RED + 8 PRESSURE], and 15 producer
     adapter tests).
 """

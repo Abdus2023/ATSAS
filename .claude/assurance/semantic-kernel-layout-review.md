@@ -1,5 +1,12 @@
 # Arena Assurance Interface v0.1 — Semantic Kernel Layout, Ownership & Versioning Freeze Specification
 
+```text
+Document Class: HISTORICAL
+Protocol: AIF-0.1.0
+Evaluated Snapshot: 15f7fa01778f06821d1c5c9c285bb0d666e04f8b
+Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE (Normative authority is .claude/skills/_shared/aif/)
+```
+
 > **Status**: `_shared/aif` Layout `FREEZE CANDIDATE` · Phase 0/1 `AIF-0.1` Contract & RED Suite `IMPLEMENTED & VERIFIED` · Wave-1 `SKILL.md` Authoring `NOT STARTED`  
 > **Scope**: `ARENA_GENERIC`  
 > **Companion Artifacts**: [`.claude/skills/_shared/aif/README.md`](../skills/_shared/aif/README.md), [`.claude/assurance/canonical-data-model.md`](./canonical-data-model.md), [`.claude/assurance/component-contracts.md`](./component-contracts.md), [`tests/aif-v01-red-suite.py`](../../tests/aif-v01-red-suite.py)

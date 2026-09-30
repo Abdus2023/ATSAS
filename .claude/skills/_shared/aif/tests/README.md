@@ -1,7 +1,8 @@
 # AIF-0.1.0 Behavioral Test Corpus (`tests/README.md`)
 
-- **Protocol Version**: `0.1.0` ([`../VERSION`](../VERSION))
-- **Corpus File**: [`cases.yaml`](./cases.yaml) (`41 RED + 8 PRESSURE = 49 cases`, plus `first_red_gate`)
+- **Document Class**: `EXECUTABLE-CONFORMANCE`
+- **Protocol Family / Concrete Version**: `AIF-0.1` / `0.1.0` ([`../VERSION`](../VERSION))
+- **Corpus File**: [`cases.yaml`](./cases.yaml) (`corpus_id: aif-behavioral-v1`, `41 RED + 8 PRESSURE = 49 cases`, plus `first_red_gate`)
 - **Oracle Specification**: [`oracle.md`](./oracle.md)
 
 ---

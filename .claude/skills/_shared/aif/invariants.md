@@ -1,12 +1,44 @@
 # AIF-0.1 Normative Invariants (`invariants.md`)
 
+- **Document Class**: `NORMATIVE`
 - **Protocol Family**: `AIF-0.1`
 - **Concrete Frozen Version**: `0.1.0` ([`VERSION`](./VERSION))
-- **Status**: `FROZEN AIF-0.1.0 KERNEL CONTRACT (55 Invariants + 8 Sub-Invariants = 63 Normative Rules)`
+- **Status**: `FROZEN AIF-0.1.0 KERNEL CONTRACT`
+
+```text
+Primary invariants:
+    AIF-001 .. AIF-055
+
+Sub-invariants:
+    explicitly enumerated A-suffixed identifiers
+    currently:
+      AIF-001A
+      AIF-002A
+      AIF-003A
+      AIF-004A
+      AIF-005A
+      AIF-006A
+      AIF-008A
+      AIF-014A
+```
 
 ---
 
-## 1. The 55 Normative Invariants (`AIF-001` .. `AIF-055`) & 8 Sub-Invariants (`AIF-001A` .. `AIF-014A`)
+## 1. The 7 Invariant Families (`AIF-001` .. `AIF-055`)
+
+| Family | IDs | Purpose |
+|---|---|---|
+| **Core** | `001–020` | Fundamental AIF semantics (reality, authority, snapshot, execution, evidence, verification, completion) |
+| **Authority / attribution** | `021–025` | Who may act and what can be attributed (`arena-intake-and-authority`, `agent-change-scope-audit`) |
+| **Evidence producers** | `026–028` | Producer monotonicity, independence, and CI subject binding (`ci-workflow-audit`, adapters) |
+| **Test execution** | `029–033` | What test execution can establish (`test-execution-and-evidence-audit`) |
+| **Supply chain** | `034–040` | Dependency provenance and uncertainty (`dependency-supply-chain-audit`) |
+| **Receipts** | `041–048` | Durable evidence and completion separation (`evidence-receipt-generator`, `arena-completion-gate`) |
+| **Evaluation** | `049–055` | Assurance of the evaluator itself (`skill-evaluation-harness`) |
+
+---
+
+## 2. Normative Invariant Definitions (`AIF-001` .. `AIF-055` + Enumerated Sub-Invariants)
 
 ### `AIF-001` — Authority Precedes Mutation (Reality-Preserving Rule)
 - **Rule**: Legitimate mutation requires prior `ADMITTED` status in `AdmissionRecord` backed by an `AUTHORIZED` `AuthorityEvent`. Because unauthorized execution can occur in reality, `EXECUTED(action)` never implies `AUTHORIZED(action)`:
