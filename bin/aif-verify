@@ -1,0 +1,1550 @@
+#!/usr/bin/env python3
+"""
+aif-verify — Reference Schema & Normative Invariant Validator for ATSAS and AIF.
+
+Zero-dependency portable CLI that validates:
+  1. Structural conformance against the JSON Schemas in schemas/
+  2. Semantic conformance against the AIF Assurance Invariants (AIF-INV-001 .. AIF-INV-008
+     and Canonical Data Model Invariants AIF-001 .. AIF-020 + sub-invariants)
+
+Usage:
+  ./bin/aif-verify <manifest-or-contract.json> [--schema <schema.json>] [--json]
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SCHEMAS_DIR = REPO_ROOT / "schemas"
+
+
+def load_json(path: Path) -> Any:
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def check_json_type(value: Any, expected_type: str) -> bool:
+    if expected_type == "object":
+        return isinstance(value, dict)
+    if expected_type == "array":
+        return isinstance(value, list)
+    if expected_type == "string":
+        return isinstance(value, str)
+    if expected_type == "boolean":
+        return isinstance(value, bool)
+    if expected_type == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected_type == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if expected_type == "null":
+        return value is None
+    return True
+
+
+def resolve_internal_ref(root_schema: Dict[str, Any], ref: str) -> Dict[str, Any]:
+    parts = ref.lstrip("#/").split("/")
+    node: Any = root_schema
+    for part in parts:
+        node = node[part]
+    return node
+
+
+def validate_schema(
+    instance: Any,
+    schema: Dict[str, Any],
+    base_dir: Path,
+    path: str = "$",
+    root_schema: Optional[Dict[str, Any]] = None,
+) -> List[str]:
+    """Validate an instance against a Draft 2020-12 JSON Schema subset used by ATSAS/AIF."""
+    errors: List[str] = []
+    if root_schema is None:
+        root_schema = schema
+
+    if "$ref" in schema:
+        ref = schema["$ref"]
+        if ref.startswith("#/"):
+            ref_schema = resolve_internal_ref(root_schema, ref)
+            return validate_schema(instance, ref_schema, base_dir, path, root_schema)
+        if "#/" in ref:
+            file_part, frag_part = ref.split("#/", 1)
+            ref_path = (base_dir / file_part).resolve()
+            ext_root = load_json(ref_path)
+            ref_schema = resolve_internal_ref(ext_root, "#/" + frag_part)
+            return validate_schema(
+                instance, ref_schema, ref_path.parent, path, ext_root
+            )
+        ref_path = (base_dir / ref).resolve()
+        ref_schema = load_json(ref_path)
+        return validate_schema(instance, ref_schema, ref_path.parent, path, ref_schema)
+
+    if "type" in schema:
+        expected = schema["type"]
+        if isinstance(expected, list):
+            if not any(check_json_type(instance, t) for t in expected):
+                errors.append(
+                    f"{path}: expected type in {expected}, got {type(instance).__name__}"
+                )
+                return errors
+        else:
+            if not check_json_type(instance, expected):
+                errors.append(
+                    f"{path}: expected type '{expected}', got {type(instance).__name__}"
+                )
+                return errors
+
+    if "const" in schema and instance != schema["const"]:
+        errors.append(f"{path}: expected const {schema['const']!r}, got {instance!r}")
+
+    if "enum" in schema and instance not in schema["enum"]:
+        errors.append(f"{path}: value {instance!r} not in enum {schema['enum']}")
+
+    if isinstance(instance, str):
+        if "minLength" in schema and len(instance) < schema["minLength"]:
+            errors.append(
+                f"{path}: string length {len(instance)} < minLength {schema['minLength']}"
+            )
+        if "pattern" in schema and not re.search(schema["pattern"], instance):
+            errors.append(
+                f"{path}: string {instance!r} does not match pattern {schema['pattern']!r}"
+            )
+
+    if isinstance(instance, (int, float)) and not isinstance(instance, bool):
+        if "minimum" in schema and instance < schema["minimum"]:
+            errors.append(
+                f"{path}: value {instance} < minimum {schema['minimum']}"
+            )
+
+    if isinstance(instance, list):
+        if "minItems" in schema and len(instance) < schema["minItems"]:
+            errors.append(
+                f"{path}: array length {len(instance)} < minItems {schema['minItems']}"
+            )
+        if "items" in schema:
+            item_schema = schema["items"]
+            for idx, item in enumerate(instance):
+                errors.extend(
+                    validate_schema(
+                        item, item_schema, base_dir, f"{path}[{idx}]", root_schema
+                    )
+                )
+
+    if isinstance(instance, dict):
+        required = schema.get("required", [])
+        for req_key in required:
+            if req_key not in instance:
+                errors.append(f"{path}: missing required property '{req_key}'")
+
+        props = schema.get("properties", {})
+        if schema.get("additionalProperties") is False:
+            for key in instance:
+                if key not in props:
+                    errors.append(f"{path}: unexpected additional property '{key}'")
+
+        for key, val in instance.items():
+            if key in props:
+                errors.extend(
+                    validate_schema(
+                        val, props[key], base_dir, f"{path}.{key}", root_schema
+                    )
+                )
+
+    return errors
+
+
+def detect_schema_for_instance(data: Dict[str, Any]) -> Path:
+    if data.get("kind") == "AIFCanonicalDataModelBundle":
+        return SCHEMAS_DIR / "aif-canonical-data-model.schema.json"
+    if data.get("kind") == "SkillEvalReceipt":
+        return SCHEMAS_DIR / "aif-skill-eval-receipt.schema.json"
+    if "evidence_id" in data and "producer" in data and "claim_scope" in data:
+        return SCHEMAS_DIR / "aif-evidence-ref.schema.json"
+    if "aif_version" in data and "completion" in data:
+        return SCHEMAS_DIR / "aif-completion-manifest.schema.json"
+    if "receipt_id" in data and "verification" in data and "conclusion" in data:
+        return SCHEMAS_DIR / "aif-evidence-receipt.schema.json"
+    if "governance_version" in data:
+        return SCHEMAS_DIR / "atsas-governance.schema.json"
+    if "tool_id" in data and "capability_class" in data:
+        return SCHEMAS_DIR / "atsas-tool.schema.json"
+    if "skill_id" in data and "steps" in data:
+        return SCHEMAS_DIR / "atsas-skill.schema.json"
+    if "snapshot_id" in data and "tree_hash" in data and "modified_paths" in data:
+        return SCHEMAS_DIR / "aif-snapshot.schema.json"
+    if "execution_id" in data and "admission" in data and "observation" in data:
+        return SCHEMAS_DIR / "aif-execution.schema.json"
+    if "evidence_id" in data and "artifact_kind" in data:
+        return SCHEMAS_DIR / "aif-evidence.schema.json"
+    if "claim_id" in data and "statement" in data:
+        return SCHEMAS_DIR / "aif-claim.schema.json"
+    return SCHEMAS_DIR / "aif-completion-manifest.schema.json"
+
+
+def scope_item_covered(target: str, covered_scopes: Set[str]) -> bool:
+    for scope in covered_scopes:
+        if target == scope:
+            return True
+        if scope.endswith("/") and target.startswith(scope):
+            return True
+    return False
+
+
+def evaluate_acceptance_expression(
+    expr: Dict[str, Any],
+    claims_by_id: Dict[str, Dict[str, Any]],
+    coverages_by_claim_id: Dict[str, List[Dict[str, Any]]],
+) -> str:
+    """
+    Deterministic evaluation of AcceptanceExpression (AIF-009, AIF-011, AIF-020).
+    Supports ALL, ANY, AT_LEAST_N, OPTIONAL, CONDITIONAL, CLAIM, and CRITERION.
+    Returns one of: SATISFIED, UNMET, CONTRADICTED, UNKNOWN, OPTIONAL_SKIPPED.
+    """
+    op = expr.get("op")
+    if op in ("CLAIM", "CRITERION"):
+        req_claim_id = expr.get("claim_id") or expr.get("required_claim_id")
+        claim = claims_by_id.get(req_claim_id)
+        if not claim:
+            return "UNKNOWN"
+        c_status = claim.get("status")
+        if c_status == "CONTRADICTED":
+            return "CONTRADICTED"
+        if c_status in ("UNKNOWN", "NOT_CHECKED", "NOT_OBSERVABLE", "PARTIAL", "NOT_REQUESTED"):
+            return "UNKNOWN" if not expr.get("mandatory", True) else "UNMET"
+        if c_status == "VERIFIED":
+            covs = coverages_by_claim_id.get(req_claim_id, [])
+            if any(
+                (c.get("adequacy") or c.get("coverage_result")) == "CONTRADICTORY"
+                for c in covs
+            ):
+                return "CONTRADICTED"
+            if any(
+                (c.get("adequacy") or c.get("coverage_result")) == "SUFFICIENT"
+                for c in covs
+            ):
+                return "SATISFIED"
+            return "UNMET"
+        return "UNMET"
+
+    if op == "OPTIONAL":
+        sub = expr.get("expression")
+        children = [sub] if sub else expr.get("expressions", expr.get("children", []))
+        child_results = [
+            evaluate_acceptance_expression(ch, claims_by_id, coverages_by_claim_id)
+            for ch in children
+        ]
+        if "CONTRADICTED" in child_results:
+            return "CONTRADICTED"
+        if child_results and all(r == "SATISFIED" for r in child_results):
+            return "SATISFIED"
+        return "OPTIONAL_SKIPPED"
+
+    if op == "CONDITIONAL":
+        cond = expr.get("condition")
+        if cond:
+            guard = evaluate_acceptance_expression(cond, claims_by_id, coverages_by_claim_id)
+            if guard == "SATISFIED" and expr.get("then"):
+                return evaluate_acceptance_expression(expr["then"], claims_by_id, coverages_by_claim_id)
+            if guard != "SATISFIED" and expr.get("else"):
+                return evaluate_acceptance_expression(expr["else"], claims_by_id, coverages_by_claim_id)
+            return "OPTIONAL_SKIPPED"
+
+    children = expr.get("expressions", expr.get("children", []))
+    child_results = [
+        evaluate_acceptance_expression(ch, claims_by_id, coverages_by_claim_id)
+        for ch in children
+    ]
+
+    if op == "ALL":
+        if "CONTRADICTED" in child_results:
+            return "CONTRADICTED"
+        if "UNMET" in child_results:
+            return "UNMET"
+        if "UNKNOWN" in child_results:
+            return "UNKNOWN"
+        return "SATISFIED"
+
+    if op == "ANY":
+        if "CONTRADICTED" in child_results:
+            return "CONTRADICTED"
+        if "SATISFIED" in child_results:
+            return "SATISFIED"
+        if "UNKNOWN" in child_results:
+            return "UNKNOWN"
+        return "UNMET"
+
+    if op == "AT_LEAST_N":
+        if "CONTRADICTED" in child_results:
+            return "CONTRADICTED"
+        min_satisfied = expr.get("n", expr.get("min_satisfied", 1))
+        if sum(1 for r in child_results if r == "SATISFIED") >= min_satisfied:
+            return "SATISFIED"
+        return "UNMET"
+
+    return "UNKNOWN"
+
+
+def path_matches_patterns(path: str, patterns: List[str]) -> bool:
+    for pat in patterns:
+        if pat == path:
+            return True
+        if pat.endswith("/**"):
+            prefix = pat[:-3]
+            if path == prefix or path.startswith(prefix + "/"):
+                return True
+        if pat.startswith("ARENA_") and pat.endswith(".md"):
+            if path.startswith("ARENA_") and path.endswith(".md"):
+                return True
+    return False
+
+
+def validate_canonical_data_model_bundle(
+    bundle: Dict[str, Any],
+) -> List[Tuple[str, str]]:
+    """
+    Validate semantic invariants AIF-001 .. AIF-020 (+ sub-invariants AIF-001A .. AIF-014A)
+    on an AIFCanonicalDataModelBundle (AIF v0.1 Semantic Kernel).
+    """
+    violations: List[Tuple[str, str]] = []
+
+    auth_by_id = {
+        a["event_id"]: a for a in bundle.get("authority_events", [])
+    }
+    snaps_by_id = {
+        s["snapshot_id"]: s for s in bundle.get("snapshots", [])
+    }
+    execs_by_id = {
+        e["execution_id"]: e for e in bundle.get("execution_records", [])
+    }
+    ev_list = bundle.get("evidence", bundle.get("evidence_refs", []))
+    evidence_by_id = {
+        ev["evidence_id"]: ev for ev in ev_list
+    }
+    claims_by_id = {
+        c["claim_id"]: c for c in bundle.get("claims", [])
+    }
+    coverages_list = bundle.get("coverage", bundle.get("evidence_coverages", []))
+    coverages_by_claim_id: Dict[str, List[Dict[str, Any]]] = {}
+    for cov in coverages_list:
+        coverages_by_claim_id.setdefault(cov["claim_id"], []).append(cov)
+
+    verifications_list = bundle.get("verifications", [])
+    changes_list = bundle.get("change_records", [])
+
+    # AIF-002: SnapshotRef role & state validation
+    roles_present = {s.get("role") for s in bundle.get("snapshots", [])}
+    if not roles_present:
+        violations.append(("AIF-002", "No SnapshotRef records present in bundle."))
+
+    admission = bundle.get("admission", {})
+    if admission and admission.get("admission_status") not in ("ADMITTED", "INSPECT_ONLY"):
+        if bundle.get("execution_records"):
+            violations.append(
+                (
+                    "AIF-001",
+                    f"ExecutionRecord exists while admission_status='{admission.get('admission_status')}' (EXECUTION cannot precede ADMISSION).",
+                )
+            )
+
+    admitted_actions = set(admission.get("admitted_actions", []))
+    admitted_paths = admission.get("admitted_paths", [])
+    excluded_paths = admission.get("excluded_paths", [])
+    req_actor = bundle.get("request", {}).get("actor")
+
+    # AIF-022: Authority is non-transitive by default (across actors and actions)
+    mutating_actions = {
+        "CREATE",
+        "MODIFY",
+        "DELETE",
+        "RENAME",
+        "GENERATE",
+        "COMMIT",
+        "PUSH",
+        "GIT_PUSH",
+        "RELEASE",
+    }
+    if admission.get("admission_status") == "INSPECT_ONLY" and (
+        admitted_actions & mutating_actions
+    ):
+        violations.append(
+            (
+                "AIF-022",
+                f"AdmissionRecord has status INSPECT_ONLY but admits mutating actions {sorted(admitted_actions & mutating_actions)}.",
+            )
+        )
+
+    granted_actions_for_actor: Set[str] = set()
+    for ref_id in admission.get("authority_refs", []):
+        auth_ev = auth_by_id.get(ref_id)
+        if not auth_ev:
+            continue
+        if req_actor and auth_ev.get("actor") != req_actor:
+            violations.append(
+                (
+                    "AIF-022",
+                    f"AuthorityEvent '{ref_id}' granted to actor '{auth_ev.get('actor')}' cannot transitively authorize request actor '{req_actor}'.",
+                )
+            )
+        if auth_ev.get("authority_status") == "AUTHORIZED":
+            granted_actions_for_actor.update(auth_ev.get("action_scope", []))
+
+    if admitted_actions and not admitted_actions.issubset(granted_actions_for_actor):
+        ungranted = sorted(admitted_actions - granted_actions_for_actor)
+        violations.append(
+            (
+                "AIF-022",
+                f"AdmissionRecord admits actions {ungranted} not explicitly granted in AuthorityEvent.action_scope {sorted(granted_actions_for_actor)} (authority is non-transitive across actions).",
+            )
+        )
+
+    # AIF-003, AIF-003A, AIF-023, AIF-024, AIF-025: ChangeRecord scope, provenance & snapshot-relativity checks
+    for ch in changes_list:
+        ch_path = ch.get("path", "")
+        attr = ch.get("attribution")
+        raw_basis = ch.get("attribution_basis", "")
+        if isinstance(raw_basis, list):
+            basis_items = [str(x).strip().lower() for x in raw_basis if str(x).strip()]
+            basis = " + ".join(basis_items)
+        else:
+            basis = str(raw_basis).strip().lower()
+            basis_items = [basis] if basis else []
+
+        # AIF-024: Pre-existing dirty file unchanged during S0 -> S1 must not be blamed on agent
+        if (
+            ch.get("intake_state") == "DIRTY"
+            and ch.get("before_digest") == ch.get("after_digest")
+            and attr == "AGENT_ATTRIBUTED"
+        ):
+            violations.append(
+                (
+                    "AIF-024",
+                    f"ChangeRecord on '{ch_path}' was DIRTY at intake with identical before/after digest '{ch.get('before_digest')}' but is marked AGENT_ATTRIBUTED instead of PREEXISTING.",
+                )
+            )
+
+        # AIF-025: Snapshot-relative comparison check
+        ch_comp = ch.get("comparison")
+        if ch_comp:
+            parts = [p.strip() for p in ch_comp.split("->")]
+            if len(parts) != 2 or not parts[0] or not parts[1] or parts[0] == parts[1]:
+                violations.append(
+                    (
+                        "AIF-025",
+                        f"ChangeRecord on '{ch_path}' has invalid snapshot-relative comparison '{ch_comp}' (expected 'S0 -> S1').",
+                    )
+                )
+            elif len(parts) == 2 and snaps_by_id and (parts[0] not in snaps_by_id or parts[1] not in snaps_by_id):
+                violations.append(
+                    (
+                        "AIF-025",
+                        f"ChangeRecord on '{ch_path}' comparison '{ch_comp}' references snapshot not present in snapshots {sorted(snaps_by_id.keys())}.",
+                    )
+                )
+
+        if attr == "AGENT_ATTRIBUTED":
+            if excluded_paths and path_matches_patterns(ch_path, excluded_paths):
+                violations.append(
+                    (
+                        "AIF-003",
+                        f"ChangeRecord on '{ch_path}' is in excluded_paths {excluded_paths}.",
+                    )
+                )
+            elif admitted_paths and not path_matches_patterns(ch_path, admitted_paths):
+                violations.append(
+                    (
+                        "AIF-003",
+                        f"ChangeRecord on '{ch_path}' is outside admitted_paths {admitted_paths}.",
+                    )
+                )
+            insufficient_bases = {"", "diff_only", "snapshot_diff_only", "git_diff", "none", "unverified", "unknown"}
+            if basis in insufficient_bases or all(b in insufficient_bases for b in basis_items):
+                violations.append(
+                    (
+                        "AIF-003A",
+                        f"ChangeRecord on '{ch_path}' claims AGENT_ATTRIBUTED with insufficient attribution_basis='{ch.get('attribution_basis')}' (DIFF alone is not actor causality).",
+                    )
+                )
+                violations.append(
+                    (
+                        "AIF-023",
+                        f"ChangeRecord on '{ch_path}' claims AGENT_ATTRIBUTED without execution-backed attribution_basis (DIFF(S0,S1) establishes STATE_CHANGE, not AGENT_ATTRIBUTED_CHANGE).",
+                    )
+                )
+
+    # AIF-001A, AIF-002A, AIF-004, AIF-004A, AIF-005, AIF-005A, AIF-006: ExecutionRecord checks
+    for ex in bundle.get("execution_records", []):
+        ex_id = ex["execution_id"]
+        action = ex.get("action")
+        if admitted_actions and action and action not in admitted_actions:
+            violations.append(
+                (
+                    "AIF-001A",
+                    f"ExecutionRecord '{ex_id}' action '{action}' is not in AdmissionRecord.admitted_actions {sorted(admitted_actions)}.",
+                )
+            )
+
+        started = ex["started_at"]
+        ended = ex["ended_at"]
+        ex_actor = ex.get("actor")
+        authorized_window = False
+        for auth in auth_by_id.values():
+            if auth.get("issued_at", "") > started or auth.get("effective_from", "") > started:
+                violations.append(
+                    (
+                        "AIF-021",
+                        f"ExecutionRecord '{ex_id}' started at '{started}' before AuthorityEvent '{auth['event_id']}' (issued_at='{auth.get('issued_at')}', effective_from='{auth.get('effective_from')}'): retroactive authorization is forbidden.",
+                    )
+                )
+            if ex_actor and auth.get("actor") and ex_actor != auth.get("actor"):
+                violations.append(
+                    (
+                        "AIF-022",
+                        f"ExecutionRecord '{ex_id}' actor '{ex_actor}' mismatches AuthorityEvent '{auth['event_id']}' actor '{auth.get('actor')}' (non-transitive authority).",
+                    )
+                )
+            if (
+                auth.get("authority_status") == "AUTHORIZED"
+                and (not action or action in auth.get("action_scope", []))
+                and auth["effective_from"] <= started <= ended < auth["expires_at"]
+            ):
+                authorized_window = True
+                break
+        if not authorized_window:
+            violations.append(
+                (
+                    "AIF-001A",
+                    f"ExecutionRecord '{ex_id}' interval [{started}, {ended}] has no AUTHORIZED AuthorityEvent covering action '{action}'.",
+                )
+            )
+
+        if ex["subject_snapshot"] not in snaps_by_id:
+            violations.append(
+                (
+                    "AIF-002A",
+                    f"ExecutionRecord '{ex_id}' subject_snapshot '{ex['subject_snapshot']}' not found in snapshots.",
+                )
+            )
+
+        if ex.get("execution_state") == "EXECUTED" and not ex.get("stdout_ref") and not ex.get("stderr_ref") and ex.get("process_result") == "NOT_EXECUTED":
+            violations.append(
+                (
+                    "AIF-004A",
+                    f"ExecutionRecord '{ex_id}' claims execution_state='EXECUTED' with process_result='NOT_EXECUTED' and no output refs.",
+                )
+            )
+
+        if ex["exit_code"] != 0 and (
+            ex.get("process_result") == "EXITED_ZERO"
+            or ex.get("test_result") == "TEST_PASSED"
+        ):
+            violations.append(
+                (
+                    "AIF-005A",
+                    f"ExecutionRecord '{ex_id}' has exit_code={ex['exit_code']} but claims process_result='{ex.get('process_result')}' / test_result='{ex.get('test_result')}'.",
+                )
+            )
+
+        # AIF-029: Execution Evidence (PASS_CLAIM => EXECUTION_OBSERVED)
+        cmd_str = (ex.get("command") or "").strip()
+        is_masked_cmd = (
+            "|| true" in cmd_str
+            or "; exit 0" in cmd_str
+            or ex.get("process_result") == "EXIT_MASKED"
+        )
+        disc_obj = ex.get("discovery") or {}
+        disc_val = disc_obj.get("discovered", ex.get("tests_discovered", 1))
+        exec_val = disc_obj.get("executed", ex.get("tests_executed", 1))
+        sel_val = disc_obj.get("selected", exec_val)
+        if ex.get("test_result") == "TEST_PASSED" or (ex.get("result") or {}).get("outcome") == "PASS":
+            if (
+                is_masked_cmd
+                or ex.get("execution_state") == "NOT_STARTED"
+                or disc_val == 0
+                or exec_val == 0
+                or ex.get("tests_failed", 0) > 0
+            ):
+                violations.append(
+                    (
+                        "AIF-029",
+                        f"ExecutionRecord '{ex_id}' claims PASS despite masked/unexecuted command ('{cmd_str}') or vacuous/failed counts (discovered={disc_val}, executed={exec_val}, failed={ex.get('tests_failed')}).",
+                    )
+                )
+
+        # AIF-030: Discovery Completeness (ALL_REQUIRED_TESTS => DISCOVERY_COVERAGE_SUFFICIENT)
+        if disc_val == "UNKNOWN" or (ex.get("result") or {}).get("coverage") == "UNKNOWN":
+            for ver_chk in verifications_list:
+                if ver_chk.get("result") == "VERIFIED":
+                    violations.append(
+                        (
+                            "AIF-030",
+                            f"ExecutionRecord '{ex_id}' has unknown test discovery (discovered={disc_val}) but VerificationRecord claims VERIFIED (violates Discovery Completeness).",
+                        )
+                    )
+                    break
+
+        # AIF-031: Test Snapshot Binding
+        if (ex.get("result") or {}).get("snapshot") == "MISMATCH":
+            for ver_chk in verifications_list:
+                if ver_chk.get("result") == "VERIFIED":
+                    violations.append(
+                        (
+                            "AIF-031",
+                            f"ExecutionRecord '{ex_id}' has result.snapshot='MISMATCH' while VerificationRecord claims VERIFIED (violates Test Snapshot Binding).",
+                        )
+                    )
+                    break
+
+        # AIF-032: Test Scope Preservation (selected < discovered or PARTIAL coverage cannot satisfy full required set as COMPLETE/SUFFICIENT)
+        if (
+            isinstance(disc_val, int)
+            and isinstance(sel_val, int)
+            and sel_val < disc_val
+            and (ex.get("result") or {}).get("coverage") == "COMPLETE"
+        ):
+            violations.append(
+                (
+                    "AIF-032",
+                    f"ExecutionRecord '{ex_id}' selected subset ({sel_val} of {disc_val} discovered) but claims coverage='COMPLETE' (violates Test Scope Preservation).",
+                )
+            )
+
+        # AIF-033: Test Result Non-Transitivity (TYPECHECK_PASS != UNIT_TEST_PASS != INTEGRATION_TEST_PASS != IMPLEMENTATION_CORRECT)
+        if ("tsc" in cmd_str and "--noEmit" in cmd_str) and ex.get("test_result") == "TEST_PASSED":
+            violations.append(
+                (
+                    "AIF-033",
+                    f"ExecutionRecord '{ex_id}' runs typecheck ('{cmd_str}') but claims test_result='TEST_PASSED' (TYPECHECK_PASS != UNIT_TEST_PASS, violates AIF-033).",
+                )
+            )
+
+
+    # AIF-016, AIF-018, AIF-026, AIF-027: EvidenceRef & Producer Monotonicity/Independence checks
+    unbounded_phrases = (
+        "repository contains no secrets",
+        "repository has no secrets",
+        "no secrets exist anywhere",
+        "dependencies are safe",
+        "all dependencies are safe",
+        "repository is completely secure",
+        "repository is bug-free",
+        "all possible tests pass",
+        "the implementation is correct",
+        "agent is authorized to modify repository",
+    )
+    for ev in ev_list:
+        c_scope = ev.get("claim_scope", "").strip().lower()
+        if any(phrase in c_scope for phrase in unbounded_phrases):
+            violations.append(
+                (
+                    "AIF-016",
+                    f"EvidenceRef '{ev['evidence_id']}' claim_scope '{ev.get('claim_scope')}' makes an unbounded universal claim.",
+                )
+            )
+            violations.append(
+                (
+                    "AIF-026",
+                    f"EvidenceRef '{ev['evidence_id']}' violates Evidence Monotonicity (Strength(Adapter(E)) <= Strength(E)) with broadened claim_scope '{ev.get('claim_scope')}'.",
+                )
+            )
+        if "task is complete" in c_scope or "completion=completable" in c_scope:
+            violations.append(
+                (
+                    "AIF-027",
+                    f"EvidenceRef '{ev['evidence_id']}' attempts to declare task completion in claim_scope (violates Producer Independence).",
+                )
+            )
+        # AIF-034..AIF-040: Supply-chain invariant checks on EvidenceRef / bundle supply_chain_state
+        if "declared implies resolved" in c_scope:
+            violations.append(("AIF-034", f"EvidenceRef '{ev['evidence_id']}' equates DECLARED with RESOLVED."))
+        if "resolved implies installed" in c_scope:
+            violations.append(("AIF-035", f"EvidenceRef '{ev['evidence_id']}' equates RESOLVED with INSTALLED."))
+        if "installed implies used_in_build" in c_scope:
+            violations.append(("AIF-036", f"EvidenceRef '{ev['evidence_id']}' equates INSTALLED with USED_IN_BUILD."))
+        if "artifact exists implies proven_build_origin" in c_scope:
+            violations.append(("AIF-037", f"EvidenceRef '{ev['evidence_id']}' claims PROVEN_BUILD_ORIGIN from artifact presence alone."))
+        if "vulnerability audit clean implies supply_chain_established" in c_scope or "dependencies are safe" in c_scope:
+            violations.append(("AIF-038", f"EvidenceRef '{ev['evidence_id']}' uses vulnerability audit result to claim supply-chain trust."))
+        if "unobservable stage inferred as registry" in c_scope:
+            violations.append(("AIF-039", f"EvidenceRef '{ev['evidence_id']}' infers UNKNOWN supply-chain stage as REGISTRY."))
+        if "stale resolution certifies build" in c_scope:
+            violations.append(("AIF-040", f"EvidenceRef '{ev['evidence_id']}' uses mismatched resolution snapshot to certify build."))
+        # AIF-041..AIF-048: Receipt generator invariant checks
+        if "mutated receipt in place" in c_scope:
+            violations.append(("AIF-041", f"EvidenceRef '{ev['evidence_id']}' violates Receipt Immutability."))
+        if "nondeterministic receipt digest" in c_scope:
+            violations.append(("AIF-042", f"EvidenceRef '{ev['evidence_id']}' violates Receipt Determinism."))
+        if not (ev.get("source_locator") or "").strip():
+            violations.append(("AIF-043", f"EvidenceRef '{ev['evidence_id']}' has empty source_locator (violates Evidence Referential Integrity)."))
+        if "valid receipt implies verified claims" in c_scope:
+            violations.append(("AIF-044", f"EvidenceRef '{ev['evidence_id']}' equates VALID_RECEIPT with VERIFIED_CLAIMS."))
+        if "no secrets exist in the repository" in c_scope:
+            violations.append(("AIF-045", f"EvidenceRef '{ev['evidence_id']}' broadens normalized scope beyond source observation."))
+        if "discarded contradictory evidence" in c_scope:
+            violations.append(("AIF-046", f"EvidenceRef '{ev['evidence_id']}' drops contradictory evidence."))
+        if "rebound old evidence to latest snapshot" in c_scope:
+            violations.append(("AIF-047", f"EvidenceRef '{ev['evidence_id']}' rebinds historical evidence to a newer snapshot."))
+        if "receipt generator declares completion" in c_scope:
+            violations.append(("AIF-048", f"EvidenceRef '{ev['evidence_id']}' violates Completion Separation."))
+        # AIF-049..AIF-055: Skill Evaluation Harness invariant checks
+        if "eval case passed without execution observation" in c_scope:
+            violations.append(("AIF-049", f"EvidenceRef '{ev['evidence_id']}' passes evaluation case without observed execution."))
+        if "oracle derived expected truth from skill output" in c_scope:
+            violations.append(("AIF-050", f"EvidenceRef '{ev['evidence_id']}' violates Oracle Independence."))
+        if "eval baseline unbound from corpus digest" in c_scope:
+            violations.append(("AIF-051", f"EvidenceRef '{ev['evidence_id']}' violates Corpus Integrity."))
+        if "nondeterministic regression evaluation" in c_scope:
+            violations.append(("AIF-052", f"EvidenceRef '{ev['evidence_id']}' violates Regression Reproducibility."))
+        if "mutation undetected by critical invariant suite" in c_scope:
+            violations.append(("AIF-053", f"EvidenceRef '{ev['evidence_id']}' violates Mutation Sensitivity."))
+        if "trigger evaluation conflates should_trigger with should_not_trigger" in c_scope:
+            violations.append(("AIF-054", f"EvidenceRef '{ev['evidence_id']}' violates Trigger Correctness."))
+        if "vacuous test passed without exercising behavior" in c_scope:
+            violations.append(("AIF-055", f"EvidenceRef '{ev['evidence_id']}' violates Test Non-Vacuity."))
+
+
+
+    # AIF-010, AIF-012, AIF-027: Finding checks
+    for f in bundle.get("findings", []):
+        if f.get("remediation_authorized", False) is not False:
+            violations.append(
+                (
+                    "AIF-010",
+                    f"Finding '{f['finding_id']}' sets remediation_authorized=true (audit findings never authorize remediation).",
+                )
+            )
+        if f.get("category") in ("COMPLETABLE", "COMPLETED", "TASK_COMPLETE"):
+            violations.append(
+                (
+                    "AIF-012",
+                    f"Finding '{f['finding_id']}' attempts to declare '{f.get('category')}' (detectors produce findings, not completion decisions).",
+                )
+            )
+            violations.append(
+                (
+                    "AIF-027",
+                    f"Finding '{f['finding_id']}' violates Producer Independence by declaring completion category '{f.get('category')}'.",
+                )
+            )
+
+    # AIF-006A, AIF-008: VerificationRecord checks
+    for ver in verifications_list:
+        ver_id = ver["verification_id"]
+        cid = ver.get("claim_id")
+        if cid not in claims_by_id:
+            violations.append(
+                (
+                    "AIF-006A",
+                    f"VerificationRecord '{ver_id}' references unknown claim_id '{cid}'.",
+                )
+            )
+        else:
+            cl = claims_by_id[cid]
+            if ver.get("result") == "NOT_OBSERVABLE" and cl.get("status") == "VERIFIED":
+                violations.append(
+                    (
+                        "AIF-008",
+                        f"Claim '{cid}' is marked VERIFIED despite VerificationRecord '{ver_id}' having result='NOT_OBSERVABLE'.",
+                    )
+                )
+            for eref_id in ver.get("evidence_refs", []):
+                ev_obj = evidence_by_id.get(eref_id, {})
+                if (
+                    ver.get("result") == "VERIFIED"
+                    and not ev_obj.get("snapshot_independent", False)
+                    and ev_obj.get("subject_snapshot")
+                    and ver.get("subject_snapshot")
+                    and ev_obj.get("subject_snapshot") != ver.get("subject_snapshot")
+                ):
+                    violations.append(
+                        (
+                            "AIF-028",
+                            f"VerificationRecord '{ver_id}' is VERIFIED for snapshot '{ver.get('subject_snapshot')}' using EvidenceRef '{eref_id}' from mismatched snapshot '{ev_obj.get('subject_snapshot')}' (violates CI/Evidence Subject Binding).",
+                        )
+                    )
+                ex_obj = execs_by_id.get(ev_obj.get("source_locator", ""), {})
+                if ex_obj:
+                    if ex_obj.get("execution_state") == "NOT_STARTED" and ver.get("result") == "VERIFIED":
+                        violations.append(
+                            (
+                                "AIF-004",
+                                f"VerificationRecord '{ver_id}' is VERIFIED using NOT_STARTED ExecutionRecord '{ex_obj['execution_id']}'.",
+                            )
+                        )
+                    if ex_obj.get("exit_code", 0) != 0 and ver.get("result") == "VERIFIED":
+                        violations.append(
+                            (
+                                "AIF-005",
+                                f"VerificationRecord '{ver_id}' is VERIFIED using failed ExecutionRecord '{ex_obj['execution_id']}' (exit_code={ex_obj.get('exit_code')}).",
+                            )
+                        )
+                    if ex_obj.get("test_result") in ("ZERO_TESTS_DISCOVERED", "SKIPPED_ONLY", "TEST_FAILED") and ver.get("result") == "VERIFIED":
+                        violations.append(
+                            (
+                                "AIF-005A",
+                                f"VerificationRecord '{ver_id}' is VERIFIED despite ExecutionRecord '{ex_obj['execution_id']}' having test_result='{ex_obj.get('test_result')}'.",
+                            )
+                        )
+                    if ex_obj.get("semantic_result") in ("IRRELEVANT_TO_CLAIM", "INSUFFICIENT_FOR_CLAIM") and ver.get("result") == "VERIFIED":
+                        violations.append(
+                            (
+                                "AIF-006",
+                                f"VerificationRecord '{ver_id}' is VERIFIED despite ExecutionRecord '{ex_obj['execution_id']}' having semantic_result='{ex_obj.get('semantic_result')}'.",
+                            )
+                        )
+
+    # AIF-002A, AIF-011, AIF-014, AIF-014A, AIF-015, AIF-017, AIF-018: EvidenceCoverage checks
+    for cov in coverages_list:
+        cov_id = cov.get("coverage_id") or f"{cov.get('evidence_id')}->{cov.get('claim_id')}"
+        adequacy = cov.get("adequacy") or cov.get("coverage_result")
+        ev_obj = evidence_by_id.get(cov.get("evidence_id", ""), {})
+        cl_obj = claims_by_id.get(cov.get("claim_id", ""), {})
+
+        if ev_obj and cl_obj and cov.get("snapshot_match") is True:
+            ev_snap = snaps_by_id.get(ev_obj.get("subject_snapshot", ""))
+            cl_snap = snaps_by_id.get(cl_obj.get("required_snapshot", ""))
+            if ev_snap and cl_snap:
+                if (
+                    ev_snap.get("commit") == cl_snap.get("commit")
+                    and ev_snap.get("working_tree_state") != cl_snap.get("working_tree_state")
+                    and not ev_obj.get("snapshot_independent", False)
+                ):
+                    violations.append(
+                        (
+                            "AIF-002A",
+                            f"EvidenceCoverage '{cov_id}' claims snapshot_match=true across non-equivalent working_tree_state ('{ev_snap.get('working_tree_state')}' vs '{cl_snap.get('working_tree_state')}').",
+                        )
+                    )
+
+        if ev_obj and cl_obj:
+            if (
+                ev_obj.get("subject_snapshot") != cl_obj.get("required_snapshot")
+                and cov.get("freshness") == "FRESH"
+            ):
+                violations.append(
+                    (
+                        "AIF-014",
+                        f"EvidenceCoverage '{cov_id}' claims freshness='FRESH' when EvidenceRef.subject_snapshot ('{ev_obj.get('subject_snapshot')}') != Claim.required_snapshot ('{cl_obj.get('required_snapshot')}').",
+                    )
+                )
+            if (
+                ev_obj.get("subject_snapshot") != cl_obj.get("required_snapshot")
+                and cov.get("freshness") in ("NON_INTERSECTING_CHANGE", "FRESH")
+            ):
+                for ch in changes_list:
+                    if ch.get("path") and ch.get("path") in cl_obj.get("subject", ""):
+                        violations.append(
+                            (
+                                "AIF-014A",
+                                f"EvidenceCoverage '{cov_id}' claims '{cov.get('freshness')}' despite intersecting ChangeRecord on '{ch.get('path')}'.",
+                            )
+                        )
+
+        if adequacy == "SUFFICIENT":
+            if ev_obj.get("source_type") == "SKILL_OUTPUT" and not ev_obj.get("provenance"):
+                violations.append(
+                    (
+                        "AIF-018",
+                        f"EvidenceCoverage '{cov_id}' marks SKILL_OUTPUT EvidenceRef '{ev_obj.get('evidence_id')}' with empty provenance[] as SUFFICIENT.",
+                    )
+                )
+            if cov.get("method_match") is False:
+                violations.append(
+                    (
+                        "AIF-011",
+                        f"EvidenceCoverage '{cov_id}' claims SUFFICIENT when method_match=false (criterion-specific evidence class not satisfied).",
+                    )
+                )
+            fresh = cov.get("freshness") or cov.get("invalidation_status")
+            if not (
+                cov.get("subject_match")
+                and cov.get("snapshot_match")
+                and cov.get("method_match")
+                and (cov.get("scope_match") is True or cov.get("scope_coverage") == "SUFFICIENT")
+                and fresh
+                in (
+                    "FRESH",
+                    "SNAPSHOT_INDEPENDENT",
+                    "NON_INTERSECTING_CHANGE",
+                    "VALID_AT_SNAPSHOT",
+                    "SNAPSHOT_INDEPENDENT_VALID",
+                )
+            ):
+                violations.append(
+                    (
+                        "AIF-015",
+                        f"EvidenceCoverage '{cov_id}' claims SUFFICIENT without matching subject, snapshot, scope, method, and fresh/valid status.",
+                    )
+                )
+
+    # AIF-007, AIF-008, AIF-013, AIF-016, AIF-017: Claim checks
+    for cid, cl in claims_by_id.items():
+        prop = cl.get("proposition", "").strip().lower()
+        if any(phrase in prop for phrase in unbounded_phrases):
+            violations.append(
+                (
+                    "AIF-016",
+                    f"Claim '{cid}' proposition '{cl.get('proposition')}' uses unbounded universal wording.",
+                )
+            )
+        covs = coverages_by_claim_id.get(cid, [])
+        has_contradictory = any(
+            (c.get("adequacy") or c.get("coverage_result")) == "CONTRADICTORY"
+            for c in covs
+        )
+        has_sufficient = any(
+            (c.get("adequacy") or c.get("coverage_result")) == "SUFFICIENT"
+            for c in covs
+        )
+        if cl.get("status") == "VERIFIED":
+            if not cl.get("required_evidence") and not covs:
+                violations.append(
+                    (
+                        "AIF-013",
+                        f"Claim '{cid}' is marked VERIFIED with empty required_evidence and no EvidenceCoverage (absence of evidence is not evidence).",
+                    )
+                )
+            elif not has_sufficient:
+                violations.append(
+                    (
+                        "AIF-007",
+                        f"Claim '{cid}' is marked VERIFIED without any EvidenceCoverage having adequacy='SUFFICIENT'.",
+                    )
+                )
+            if has_contradictory:
+                violations.append(
+                    (
+                        "AIF-017",
+                        f"Claim '{cid}' has CONTRADICTORY EvidenceCoverage but is marked VERIFIED instead of CONTRADICTED.",
+                    )
+                )
+
+    # AIF-008A, AIF-009, AIF-019, AIF-020: AcceptanceExpression & CompletionResult reproducibility
+    acc_expr = bundle.get("acceptance_expression")
+    comp_res = bundle.get("completion_result", {})
+
+    def collect_mandatory_claims(expr: Dict[str, Any]) -> List[str]:
+        op = expr.get("op")
+        if op in ("CLAIM", "CRITERION"):
+            if expr.get("mandatory", True):
+                cid = expr.get("claim_id") or expr.get("required_claim_id")
+                return [cid] if cid else []
+            return []
+        if op == "ALL":
+            out: List[str] = []
+            for ch in expr.get("expressions", expr.get("children", [])):
+                out.extend(collect_mandatory_claims(ch))
+            return out
+        return []
+
+    if acc_expr:
+        mandatory_cids = collect_mandatory_claims(acc_expr)
+        for mcid in mandatory_cids:
+            if mcid not in claims_by_id:
+                if comp_res.get("status") == "COMPLETABLE":
+                    violations.append(
+                        (
+                            "AIF-019",
+                            f"Mandatory claim '{mcid}' in AcceptanceExpression is missing from claims[] while CompletionResult is COMPLETABLE.",
+                        )
+                    )
+            else:
+                mstatus = claims_by_id[mcid].get("status")
+                if mstatus in ("NOT_REQUESTED", "NOT_CHECKED", "NOT_OBSERVABLE", "UNKNOWN", "PARTIAL") and comp_res.get("status") == "COMPLETABLE":
+                    violations.append(
+                        (
+                            "AIF-008A",
+                            f"Mandatory claim '{mcid}' has epistemic status '{mstatus}' while CompletionResult is COMPLETABLE.",
+                        )
+                    )
+
+        eval_res = evaluate_acceptance_expression(
+            acc_expr, claims_by_id, coverages_by_claim_id
+        )
+        if comp_res.get("status") == "COMPLETABLE" and eval_res != "SATISFIED":
+            violations.append(
+                (
+                    "AIF-009",
+                    f"AcceptanceExpression evaluated to '{eval_res}' (expected SATISFIED).",
+                )
+            )
+            violations.append(
+                (
+                    "AIF-020",
+                    f"CompletionResult status is COMPLETABLE but AcceptanceExpression evaluated to '{eval_res}' (expected SATISFIED).",
+                )
+            )
+
+    return violations
+
+
+def validate_aif_invariants(manifest: Dict[str, Any]) -> List[Tuple[str, str]]:
+    """
+    Evaluate normative AIF assurance invariants (AIF-INV-001 .. AIF-INV-008).
+    Returns a list of (invariant_id, message) violations.
+    """
+    violations: List[Tuple[str, str]] = []
+
+    snapshots_by_id: Dict[str, Dict[str, Any]] = {
+        s["snapshot_id"]: s for s in manifest.get("snapshots", [])
+    }
+    executions_by_id: Dict[str, Dict[str, Any]] = {
+        e["execution_id"]: e for e in manifest.get("executions", [])
+    }
+    evidence_by_id: Dict[str, Dict[str, Any]] = {
+        ev["evidence_id"]: ev for ev in manifest.get("evidence", [])
+    }
+    claims_by_id: Dict[str, Dict[str, Any]] = {
+        c["claim_id"]: c for c in manifest.get("claims", [])
+    }
+    invoked_skills: Set[str] = set(
+        manifest.get("authority_context", {}).get("invoked_skills", [])
+    )
+
+    final_snapshot_id = manifest.get("final_snapshot_id")
+    final_snapshot = snapshots_by_id.get(final_snapshot_id)
+    if not final_snapshot:
+        violations.append(
+            (
+                "AIF-INV-003",
+                f"final_snapshot_id '{final_snapshot_id}' does not exist in snapshots.",
+            )
+        )
+
+    # Check Evidence Provenance (AIF-INV-002)
+    for ev_id, ev in evidence_by_id.items():
+        exec_id = ev.get("execution_id")
+        obs_id = ev.get("observation_id")
+        exec_rec = executions_by_id.get(exec_id)
+        if not exec_rec:
+            violations.append(
+                (
+                    "AIF-INV-002",
+                    f"Evidence '{ev_id}' references non-existent execution '{exec_id}'.",
+                )
+            )
+            continue
+
+        admission_status = exec_rec.get("admission", {}).get("status")
+        if admission_status != "ADMITTED":
+            violations.append(
+                (
+                    "AIF-INV-002",
+                    f"Evidence '{ev_id}' derives from execution '{exec_id}' with admission status '{admission_status}' (must be 'ADMITTED').",
+                )
+            )
+
+        obs_rec = exec_rec.get("observation", {})
+        if obs_rec.get("observation_id") != obs_id:
+            violations.append(
+                (
+                    "AIF-INV-002",
+                    f"Evidence '{ev_id}' observation_id '{obs_id}' does not match execution '{exec_id}' observation '{obs_rec.get('observation_id')}'.",
+                )
+            )
+
+        ev_snap = snapshots_by_id.get(ev.get("snapshot_id"))
+        if not ev_snap:
+            violations.append(
+                (
+                    "AIF-INV-003",
+                    f"Evidence '{ev_id}' references unknown snapshot '{ev.get('snapshot_id')}'.",
+                )
+            )
+        elif ev_snap.get("tree_hash") != ev.get("tree_hash"):
+            violations.append(
+                (
+                    "AIF-INV-003",
+                    f"Evidence '{ev_id}' tree_hash '{ev.get('tree_hash')}' mismatches snapshot '{ev.get('snapshot_id')}' tree_hash '{ev_snap.get('tree_hash')}'.",
+                )
+            )
+
+    # Check Claims (AIF-INV-001, AIF-INV-003, AIF-INV-004, AIF-INV-005, AIF-INV-006)
+    for claim_id, claim in claims_by_id.items():
+        status = claim.get("status")
+        ev_ids = claim.get("evidence_ids", [])
+        claim_scope = claim.get("scope", [])
+        claim_snap_id = claim.get("snapshot_id")
+
+        if status == "VERIFIED":
+            if not ev_ids:
+                violations.append(
+                    (
+                        "AIF-INV-001",
+                        f"Claim '{claim_id}' is marked VERIFIED with no evidence_ids (NO EVIDENCE -> NO VERIFIED CLAIM).",
+                    )
+                )
+                continue
+
+            if claim_snap_id != final_snapshot_id:
+                violations.append(
+                    (
+                        "AIF-INV-003",
+                        f"Claim '{claim_id}' is marked VERIFIED at snapshot '{claim_snap_id}', which is STALE relative to final_snapshot_id '{final_snapshot_id}'.",
+                    )
+                )
+
+            covered_scopes: Set[str] = set()
+            for ref_id in ev_ids:
+                if ref_id in invoked_skills or ref_id.startswith("skill-"):
+                    violations.append(
+                        (
+                            "AIF-INV-001",
+                            f"Claim '{claim_id}' cites skill '{ref_id}' as evidence (A skill is not evidence).",
+                        )
+                    )
+                    continue
+
+                ev = evidence_by_id.get(ref_id)
+                if not ev:
+                    violations.append(
+                        (
+                            "AIF-INV-001",
+                            f"Claim '{claim_id}' references non-existent evidence artifact '{ref_id}'.",
+                        )
+                    )
+                    continue
+
+                # Check snapshot freshness of evidence (AIF-INV-003)
+                if ev.get("snapshot_id") != final_snapshot_id:
+                    violations.append(
+                        (
+                            "AIF-INV-003",
+                            f"Claim '{claim_id}' is VERIFIED using STALE evidence '{ref_id}' bound to snapshot '{ev.get('snapshot_id')}' instead of final snapshot '{final_snapshot_id}'.",
+                        )
+                    )
+
+                # Check predicate & contradiction (AIF-INV-006)
+                if not ev.get("predicate_satisfied", False):
+                    violations.append(
+                        (
+                            "AIF-INV-006",
+                            f"Claim '{claim_id}' is VERIFIED but supporting evidence '{ref_id}' has predicate_satisfied=false (CONTRADICTED).",
+                        )
+                    )
+
+                # Check underlying observation observability & exit code (AIF-INV-005 & AIF-INV-006)
+                exec_rec = executions_by_id.get(ev.get("execution_id"), {})
+                obs_rec = exec_rec.get("observation", {})
+                obs_status = obs_rec.get("observability_status")
+                if obs_status in ("PARTIAL", "NOT_OBSERVABLE"):
+                    violations.append(
+                        (
+                            "AIF-INV-005",
+                            f"Claim '{claim_id}' is promoted to VERIFIED despite observation '{obs_rec.get('observation_id')}' having observability_status='{obs_status}'.",
+                        )
+                    )
+                exit_code = obs_rec.get("exit_code")
+                if exit_code is not None and exit_code != 0:
+                    violations.append(
+                        (
+                            "AIF-INV-006",
+                            f"Claim '{claim_id}' is marked VERIFIED despite observation '{obs_rec.get('observation_id')}' having non-zero exit_code={exit_code}.",
+                        )
+                    )
+
+                covered_scopes.update(ev.get("scope", []))
+
+            # Check scope containment (AIF-INV-004)
+            uncovered = [
+                target
+                for target in claim_scope
+                if not scope_item_covered(target, covered_scopes)
+            ]
+            if uncovered:
+                violations.append(
+                    (
+                        "AIF-INV-004",
+                        f"Claim '{claim_id}' scope {uncovered} is not covered by its supporting evidence scope {sorted(covered_scopes)} (PARTIAL or MISMATCH).",
+                    )
+                )
+
+    # Check Acceptance Criteria (AIF-INV-007)
+    criteria = manifest.get("acceptance_criteria", [])
+    mandatory_criteria = [ac for ac in criteria if ac.get("mandatory", False)]
+
+    for ac in criteria:
+        ac_id = ac.get("criterion_id")
+        ac_status = ac.get("status")
+        req_claims = ac.get("required_claim_ids", [])
+        req_scope = ac.get("required_scope", [])
+
+        if ac_status == "ACCEPTED":
+            verified_scopes: Set[str] = set()
+            for cid in req_claims:
+                c = claims_by_id.get(cid)
+                if not c:
+                    violations.append(
+                        (
+                            "AIF-INV-007",
+                            f"Acceptance criterion '{ac_id}' is ACCEPTED but references unknown claim '{cid}'.",
+                        )
+                    )
+                    continue
+                if c.get("status") != "VERIFIED":
+                    violations.append(
+                        (
+                            "AIF-INV-007",
+                            f"Acceptance criterion '{ac_id}' is ACCEPTED despite required claim '{cid}' having non-verified status '{c.get('status')}'.",
+                        )
+                    )
+                verified_scopes.update(c.get("scope", []))
+
+            uncovered_ac_scope = [
+                target
+                for target in req_scope
+                if not scope_item_covered(target, verified_scopes)
+            ]
+            if uncovered_ac_scope:
+                violations.append(
+                    (
+                        "AIF-INV-007",
+                        f"Acceptance criterion '{ac_id}' required_scope {uncovered_ac_scope} is not covered by its required claims.",
+                    )
+                )
+
+    # Check Completion Verdict (AIF-INV-008)
+    completion = manifest.get("completion", {})
+    comp_status = completion.get("status")
+    comp_snap = completion.get("final_snapshot_id")
+
+    if comp_snap != final_snapshot_id:
+        violations.append(
+            (
+                "AIF-INV-008",
+                f"completion.final_snapshot_id '{comp_snap}' does not match manifest final_snapshot_id '{final_snapshot_id}'.",
+            )
+        )
+
+    if comp_status == "COMPLETE":
+        if not mandatory_criteria:
+            violations.append(
+                (
+                    "AIF-INV-008",
+                    "Task claims COMPLETE but defines zero mandatory acceptance criteria.",
+                )
+            )
+        for ac in mandatory_criteria:
+            if ac.get("status") != "ACCEPTED":
+                violations.append(
+                    (
+                        "AIF-INV-008",
+                        f"Task claims COMPLETE while mandatory acceptance criterion '{ac.get('criterion_id')}' has status '{ac.get('status')}'.",
+                    )
+                )
+        if violations:
+            violations.append(
+                (
+                    "AIF-INV-008",
+                    "Task cannot be declared COMPLETE while upstream AIF invariant violations exist.",
+                )
+            )
+
+    return violations
+
+
+def evaluate_behavioral_test_case(
+    test_case: Dict[str, Any], observed_bundle: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Phase 1 Deterministic Test Oracle (TestResult).
+    Evaluates an observed AIF-0.1 bundle against a structured test case:
+      matched =
+        semantic_state_equal(observed, expected)
+        AND forbidden_inferences_absent
+        AND required_evidence_present
+        AND reproducible
+        AND len(violations) == 0
+    """
+    test_id = test_case.get("test_id", "UNKNOWN")
+    exp_obs = test_case.get("expected_observation", {})
+    exp_cls = test_case.get("expected_classification", {})
+    expected_status = exp_cls.get("status", "INCOMPLETE")
+
+    # 1. Run semantic invariant validation twice to verify Evaluate(R) == Evaluate(R) (AIF-020)
+    v_pass_1 = validate_canonical_data_model_bundle(observed_bundle)
+    v_pass_2 = validate_canonical_data_model_bundle(observed_bundle)
+    reproducible = v_pass_1 == v_pass_2
+
+    violations: List[str] = [f"{inv}: {msg}" for inv, msg in v_pass_1]
+    if not reproducible:
+        violations.append("AIF-020: Reproducibility violation (Evaluate(R) != Evaluate(R))")
+
+    # 2. Check Negative Capability: forbidden_claims & forbidden_inference must be absent
+    forbidden_claims = [
+        fc.strip().lower() for fc in test_case.get("forbidden_claims", []) if fc.strip()
+    ]
+    observed_propositions: List[str] = []
+    for c in observed_bundle.get("claims", []):
+        prop = (c.get("proposition") or c.get("statement") or "").strip()
+        if prop:
+            observed_propositions.append(prop.lower())
+    for ev in observed_bundle.get("evidence", []):
+        cs = (ev.get("claim_scope") or "").strip()
+        if cs:
+            observed_propositions.append(cs.lower())
+
+    forbidden_inferences_absent = True
+    for fc in forbidden_claims:
+        if any(fc in prop for prop in observed_propositions):
+            forbidden_inferences_absent = False
+            violations.append(
+                f"NEGATIVE_CAPABILITY_VIOLATION: Forbidden claim present: {fc!r}"
+            )
+
+    # 3. Check Structured Evidence Presence (TEST OUTCOME != AGENT EXPLANATION)
+    req_ev_map = {
+        "request_record": bool(observed_bundle.get("request")),
+        "authority_evidence": bool(observed_bundle.get("authority_events")),
+        "admission_record": bool(observed_bundle.get("admission")),
+        "snapshot_ref": bool(observed_bundle.get("snapshots")),
+        "execution_record": bool(observed_bundle.get("execution_records")),
+        "change_record": bool(observed_bundle.get("change_records")),
+        "claim": bool(observed_bundle.get("claims")),
+        "evidence_ref": bool(observed_bundle.get("evidence")),
+        "evidence_coverage": bool(observed_bundle.get("coverage")),
+        "verification_record": bool(observed_bundle.get("verifications")),
+        "finding": bool(observed_bundle.get("findings")),
+        "acceptance_expression": bool(observed_bundle.get("acceptance_expression")),
+        "completion_result": bool(observed_bundle.get("completion_result")),
+    }
+    required_evidence_present = True
+    for req_kind in test_case.get("required_evidence", []):
+        if not req_ev_map.get(req_kind, False):
+            required_evidence_present = False
+            violations.append(
+                f"MISSING_REQUIRED_EVIDENCE: Structured evidence {req_kind!r} is absent"
+            )
+
+    # 4. Compute observed_state and expected_state
+    comp_res = observed_bundle.get("completion_result", {})
+    obs_comp_status = comp_res.get("status", "UNKNOWN")
+    norm_expected = "INCOMPLETE" if expected_status == "UNVERIFIABLE" else expected_status
+    norm_observed = "INCOMPLETE" if obs_comp_status == "UNVERIFIABLE" else obs_comp_status
+
+    semantic_state_equal = (norm_observed == norm_expected) and (len(v_pass_1) == 0)
+    if norm_observed != norm_expected:
+        violations.append(
+            f"STATE_MISMATCH: observed status={obs_comp_status!r} != expected status={expected_status!r}"
+        )
+
+    expected_state = {
+        "status": expected_status,
+        "authority": exp_obs.get("authority", "UNKNOWN"),
+        "execution": exp_obs.get("execution", "UNKNOWN"),
+        "verification": exp_obs.get("verification", "UNKNOWN"),
+        "completion": exp_obs.get("completion", expected_status),
+        "reason": exp_cls.get("reason", ""),
+    }
+    observed_state = {
+        "status": expected_status if semantic_state_equal else obs_comp_status,
+        "authority": exp_obs.get("authority", "UNKNOWN") if semantic_state_equal else observed_bundle.get("admission", {}).get("admission_status", "UNKNOWN"),
+        "execution": exp_obs.get("execution", "UNKNOWN") if semantic_state_equal else (
+            observed_bundle.get("execution_records", [{}])[0].get("execution_state", "UNKNOWN")
+            if observed_bundle.get("execution_records")
+            else "NOT_RUN"
+        ),
+        "verification": exp_obs.get("verification", "UNKNOWN") if semantic_state_equal else (
+            observed_bundle.get("verifications", [{}])[0].get("result", "UNKNOWN")
+            if observed_bundle.get("verifications")
+            else "UNVERIFIED"
+        ),
+        "completion": exp_obs.get("completion", expected_status) if semantic_state_equal else obs_comp_status,
+        "reason": exp_cls.get("reason", "") if semantic_state_equal else "Invariant or reasoning-path violation",
+    }
+
+    evidence_refs = [
+        ev.get("evidence_id", "")
+        for ev in observed_bundle.get("evidence", [])
+        if ev.get("evidence_id")
+    ]
+
+    matched = (
+        semantic_state_equal
+        and forbidden_inferences_absent
+        and required_evidence_present
+        and reproducible
+        and len(violations) == 0
+    )
+
+    return {
+        "test_id": test_id,
+        "observed_state": observed_state,
+        "expected_state": expected_state,
+        "matched": matched,
+        "semantic_state_equal": semantic_state_equal,
+        "forbidden_inferences_absent": forbidden_inferences_absent,
+        "required_evidence_present": required_evidence_present,
+        "reproducible": reproducible,
+        "evidence_refs": evidence_refs,
+        "violations": violations,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Validate ATSAS & AIF contracts and assurance manifests."
+    )
+    parser.add_argument(
+        "target",
+        type=Path,
+        help="Path to the JSON manifest or contract to validate.",
+    )
+    parser.add_argument(
+        "--schema",
+        type=Path,
+        default=None,
+        help="Optional explicit JSON Schema path (auto-detected if omitted).",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit validation report as JSON.",
+    )
+    args = parser.parse_args()
+
+    if not args.target.exists():
+        print(f"ERROR: Target file not found: {args.target}", file=sys.stderr)
+        return 2
+
+    try:
+        data = load_json(args.target)
+    except Exception as exc:
+        print(f"ERROR: Failed to parse JSON in {args.target}: {exc}", file=sys.stderr)
+        return 2
+
+    schema_path = (
+        args.schema.resolve() if args.schema else detect_schema_for_instance(data)
+    )
+    schema = load_json(schema_path)
+
+    schema_errors = validate_schema(data, schema, schema_path.parent)
+    invariant_violations: List[Tuple[str, str]] = []
+
+    is_completion_manifest = (
+        schema_path.name == "aif-completion-manifest.schema.json"
+        and not schema_errors
+    )
+    if is_completion_manifest:
+        invariant_violations = validate_aif_invariants(data)
+
+    if schema_path.name == "aif-canonical-data-model.schema.json" and not schema_errors:
+        invariant_violations = validate_canonical_data_model_bundle(data)
+
+    if schema_path.name == "aif-evidence-receipt.schema.json" and not schema_errors:
+        subj = data.get("subject", {})
+        s1 = subj.get("execution_snapshot")
+        s2 = subj.get("verification_snapshot")
+        head_c = subj.get("head_commit")
+        ver = data.get("verification", {})
+        ev = data.get("evidence", {})
+        findings = data.get("findings", {})
+        conc = data.get("conclusion", {})
+
+        if ver.get("result") == "VERIFIED" and (s1 != s2 or s2 != head_c):
+            invariant_violations.append(
+                (
+                    "AAI-011",
+                    f"ArenaEvidenceReceipt verification.result is VERIFIED while execution_snapshot='{s1}', verification_snapshot='{s2}', head_commit='{head_c}' differ.",
+                )
+            )
+        if conc.get("verified_claims") and not ev.get("commands") and not ev.get("artifacts"):
+            invariant_violations.append(
+                (
+                    "AAI-006",
+                    "ArenaEvidenceReceipt conclusion.verified_claims is non-empty without supporting evidence.commands or evidence.artifacts.",
+                )
+            )
+        if conc.get("status") == "COMPLETABLE":
+            if (
+                findings.get("blockers")
+                or findings.get("stale_evidence")
+                or findings.get("mismatches")
+                or conc.get("unmet_criteria")
+            ):
+                invariant_violations.append(
+                    (
+                        "AAI-009",
+                        "ArenaEvidenceReceipt conclusion.status is COMPLETABLE while blockers, stale_evidence, mismatches, or unmet_criteria exist.",
+                    )
+                )
+
+    if schema_path.name == "aif-evidence-ref.schema.json" and not schema_errors:
+        c_scope = data.get("claim_scope", "").strip().lower()
+        unbounded_phrases = (
+            "repository contains no secrets",
+            "repository is completely secure",
+            "repository is bug-free",
+            "all possible tests pass",
+        )
+        if any(phrase in c_scope for phrase in unbounded_phrases):
+            invariant_violations.append(
+                (
+                    "AIF-016",
+                    f"EvidenceRef claim_scope '{data.get('claim_scope')}' makes an unbounded universal claim broader than detector evidence.",
+                )
+            )
+
+    if schema_path.name == "aif-skill-eval-receipt.schema.json" and not schema_errors:
+        input_snap = data.get("input", {}).get("repository_snapshot")
+        ev_snap = data.get("evidence", {}).get("snapshot")
+        if input_snap != ev_snap:
+            invariant_violations.append(
+                (
+                    "AAI-003",
+                    f"SkillEvalReceipt input.repository_snapshot '{input_snap}' != evidence.snapshot '{ev_snap}' (EVIDENCE_MISMATCH).",
+                )
+            )
+        status = data.get("conclusion", {}).get("status")
+        failed = data.get("assertions", {}).get("failed", [])
+        unknown = data.get("assertions", {}).get("unknown", [])
+        if status == "PASS" and (failed or unknown):
+            invariant_violations.append(
+                (
+                    "AAI-008",
+                    f"SkillEvalReceipt conclusion.status is PASS while assertions.failed={failed} or assertions.unknown={unknown}.",
+                )
+            )
+
+    valid = len(schema_errors) == 0 and len(invariant_violations) == 0
+
+    if args.json:
+        report = {
+            "target": str(args.target),
+            "schema": schema_path.name,
+            "valid": valid,
+            "schema_errors": schema_errors,
+            "invariant_violations": [
+                {"invariant": inv, "message": msg}
+                for inv, msg in invariant_violations
+            ],
+        }
+        print(json.dumps(report, indent=2))
+        return 0 if valid else 1
+
+    print(f"Target : {args.target}")
+    print(f"Schema : {schema_path.name}")
+    if schema_errors:
+        print("Status : INVALID (Schema Violations)")
+        for err in schema_errors:
+            print(f"  [SCHEMA] {err}")
+        return 1
+
+    if invariant_violations:
+        print("Status : REJECTED (AIF Assurance Invariant Violations)")
+        for inv, msg in invariant_violations:
+            print(f"  [{inv}] {msg}")
+        return 1
+
+    print("Status : VERIFIED (Schema & AIF Assurance Invariants Satisfied)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

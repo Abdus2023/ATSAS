@@ -1,0 +1,37 @@
+{
+  "skill_id": "skill-tdd-implementation",
+  "version": "1.0.0",
+  "scope": "ARENA_GENERIC",
+  "adaptation": "NONE",
+  "domain": "software-engineering",
+  "description": "Test-driven development workflow that writes failing tests first, implements the minimal passing logic, and delegates verification to AIF.",
+  "preconditions": [
+    "Repository working tree snapshot is recorded.",
+    "Target module and test runner are identified."
+  ],
+  "allowed_tools": [
+    "read_file",
+    "edit_file",
+    "write_file",
+    "bash"
+  ],
+  "steps": [
+    {
+      "step_id": "step-1-write-test",
+      "instruction": "Author or update unit tests covering the target behavior."
+    },
+    {
+      "step_id": "step-2-implement",
+      "instruction": "Implement the target behavior in the source module."
+    },
+    {
+      "step_id": "step-3-observe",
+      "instruction": "Execute the test suite at the final repository snapshot to generate an AIF observation."
+    }
+  ],
+  "verification_requirements": [
+    "Test execution observation must be bound to the post-implementation repository snapshot.",
+    "Evidence scope must cover both the modified source files and test files."
+  ],
+  "is_evidence": false
+}

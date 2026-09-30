@@ -1,0 +1,53 @@
+producer: ci-workflow-audit
+version: "0.1.0"
+aif_version: "0.1"
+role: evidence-producer
+
+outputs:
+  evidence: true
+  findings: true
+  verification: limited
+
+produces:
+  - evidence
+  - findings
+  - verification
+
+does_not_produce:
+  - authority
+  - admission
+  - completion
+
+authority: false
+admission: false
+completion: false
+mutation: false
+
+snapshot_binding: required
+execution_binding: required
+
+claim_scope:
+  bounded: true
+  source_type: CI_RUN
+  supported_propositions:
+    - "Workflow X completed successfully for commit S."
+    - "Required test job J passed for commit S."
+    - "CI generated the required test artifact A for commit S."
+    - "The repository has CI configured."
+  forbidden_propositions:
+    - "CI is green so uncommitted or newer commits are verified."
+    - "Release is verified."
+
+finding_categories:
+  - CI_CONFIGURATION
+  - CI_EXECUTION
+  - CI_SUBJECT_BINDING
+  - CI_ARTIFACT
+  - CI_OBSERVABILITY
+  - SECURITY_CONFIGURATION_FINDING
+  - SUPPLY_CHAIN_CONFIGURATION_FINDING
+
+limitations:
+  - workflow configuration establishes capability only, not execution (AIF-004)
+  - CI run success satisfies claims only when Subject(C) == Subject(CI_E) (AIF-028)
+  - local working-tree modifications after a CI commit render prior CI evidence STALE

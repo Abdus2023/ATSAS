@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/aif-snapshot.schema.json",
+  "title": "AIF Repository Snapshot & Change Attribution",
+  "description": "Captures the immutable repository state and change attribution at a specific point in the session.",
+  "type": "object",
+  "required": [
+    "snapshot_id",
+    "git_head_sha",
+    "tree_hash",
+    "timestamp",
+    "modified_paths"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "snapshot_id": {
+      "type": "string",
+      "pattern": "^snap-[a-zA-Z0-9_-]+$"
+    },
+    "parent_snapshot_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "git_head_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$"
+    },
+    "tree_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,64}$",
+      "description": "Digest of the workspace file tree at this snapshot."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "caused_by_execution_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Execution ID responsible for transitioning to this snapshot (Change Attribution)."
+    },
+    "modified_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Workspace paths modified in the transition to this snapshot."
+    }
+  }
+}

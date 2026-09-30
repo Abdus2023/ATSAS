@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/evidence-receipt.schema.json",
+  "title": "AIF-0.1 ArenaEvidenceReceipt",
+  "description": "Immutable historical evidence receipt container uniting all 14 AIF-0.1 Semantic Kernel objects (AIF-013, AIF-016, AIF-019, AIF-020).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "request",
+    "admission",
+    "snapshots",
+    "authority_events",
+    "execution_records",
+    "change_records",
+    "claims",
+    "evidence",
+    "coverage",
+    "verifications",
+    "findings",
+    "acceptance_expression",
+    "completion_result",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "type": "string"
+    },
+    "schema_version": {
+      "enum": ["aif/0.1", "0.1.0"]
+    },
+    "receipt_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request": {
+      "$ref": "request.schema.json"
+    },
+    "admission": {
+      "$ref": "admission-record.schema.json"
+    },
+    "snapshots": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "snapshot-ref.schema.json"
+      }
+    },
+    "authority_events": {
+      "type": "array",
+      "items": {
+        "$ref": "authority-event.schema.json"
+      }
+    },
+    "execution_records": {
+      "type": "array",
+      "items": {
+        "$ref": "execution-record.schema.json"
+      }
+    },
+    "change_records": {
+      "type": "array",
+      "items": {
+        "$ref": "change-record.schema.json"
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "claim.schema.json"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "evidence-ref.schema.json"
+      }
+    },
+    "coverage": {
+      "type": "array",
+      "items": {
+        "$ref": "evidence-coverage.schema.json"
+      }
+    },
+    "verifications": {
+      "type": "array",
+      "items": {
+        "$ref": "verification-record.schema.json"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "finding.schema.json"
+      }
+    },
+    "acceptance_expression": {
+      "$ref": "acceptance-expression.schema.json"
+    },
+    "completion_result": {
+      "$ref": "completion-result.schema.json"
+    },
+    "generated_at": {
+      "type": "string",
+      "minLength": 10
+    }
+  }
+}

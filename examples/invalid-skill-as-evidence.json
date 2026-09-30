@@ -1,0 +1,65 @@
+{
+  "aif_version": "1.0.0",
+  "task_id": "task-2026-004-skill-not-evidence",
+  "task_summary": "Demonstrates violation of 'A skill is not evidence. Execution is not completion.'",
+  "authority_context": {
+    "repository": "Abdus2023/ATSAS",
+    "working_branch": "arena/01a0ecca-atsas",
+    "governance_policy_ref": "examples/governance-policy.json",
+    "invoked_skills": [
+      "skill-security-audit"
+    ],
+    "invoked_tools": [
+      "read_file"
+    ]
+  },
+  "initial_snapshot_id": "snap-001",
+  "final_snapshot_id": "snap-001",
+  "snapshots": [
+    {
+      "snapshot_id": "snap-001",
+      "parent_snapshot_id": null,
+      "git_head_sha": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+      "tree_hash": "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4",
+      "timestamp": "2026-09-29T11:15:00Z",
+      "caused_by_execution_id": null,
+      "modified_paths": []
+    }
+  ],
+  "executions": [],
+  "evidence": [],
+  "claims": [
+    {
+      "claim_id": "claim-001",
+      "statement": "Authentication module has zero injection vulnerabilities because skill-security-audit was followed.",
+      "scope": [
+        "src/auth.py"
+      ],
+      "snapshot_id": "snap-001",
+      "status": "VERIFIED",
+      "evidence_ids": [
+        "skill-security-audit"
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion_id": "ac-001",
+      "description": "Security audit claims are backed by empirical verification evidence.",
+      "mandatory": true,
+      "required_scope": [
+        "src/auth.py"
+      ],
+      "required_claim_ids": [
+        "claim-001"
+      ],
+      "status": "ACCEPTED"
+    }
+  ],
+  "completion": {
+    "status": "COMPLETE",
+    "final_snapshot_id": "snap-001",
+    "blocking_states": [],
+    "summary": "Invalidly cites a skill invocation ('skill-security-audit') as verification evidence."
+  }
+}

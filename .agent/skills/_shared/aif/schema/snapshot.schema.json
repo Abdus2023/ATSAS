@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/snapshot.schema.json",
+  "title": "AIF-0.1 SnapshotRef",
+  "description": "Foundation for temporal and state binding across comparison_base, intake_snapshot, execution_snapshot, verification_snapshot, and current_snapshot (AIF-002, AIF-002A).",
+  "type": "object",
+  "required": [
+    "snapshot_id",
+    "role",
+    "repository",
+    "ref",
+    "commit",
+    "working_tree_state",
+    "index_state",
+    "captured_at",
+    "content_digest",
+    "metadata_digest"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 7
+    },
+    "role": {
+      "enum": [
+        "comparison_base",
+        "intake_snapshot",
+        "execution_snapshot",
+        "verification_snapshot",
+        "current_snapshot"
+      ]
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commit": {
+      "type": "string",
+      "minLength": 7
+    },
+    "working_tree_state": {
+      "enum": ["CLEAN", "DIRTY", "PARTIAL", "UNKNOWN"]
+    },
+    "index_state": {
+      "enum": ["CLEAN", "DIRTY", "PARTIAL", "UNKNOWN"]
+    },
+    "captured_at": {
+      "type": "string",
+      "minLength": 10
+    },
+    "content_digest": {
+      "type": "string",
+      "minLength": 7
+    },
+    "metadata_digest": {
+      "type": "string",
+      "minLength": 7
+    }
+  }
+}

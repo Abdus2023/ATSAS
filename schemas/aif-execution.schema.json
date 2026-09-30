@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/aif-execution.schema.json",
+  "title": "AIF Admitted Execution & Observation Record",
+  "description": "Records authority admission, execution provenance, and empirical observation for a tool or command invocation.",
+  "type": "object",
+  "required": [
+    "execution_id",
+    "admission",
+    "tool_id",
+    "invocation_summary",
+    "pre_snapshot_id",
+    "post_snapshot_id",
+    "observation"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "execution_id": {
+      "type": "string",
+      "pattern": "^exec-[a-zA-Z0-9_-]+$"
+    },
+    "admission": {
+      "type": "object",
+      "required": [
+        "status",
+        "authority_scope"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "ADMITTED",
+            "REJECTED",
+            "ESCALATED"
+          ]
+        },
+        "authority_scope": {
+          "type": "string"
+        },
+        "policy_ref": {
+          "type": "string"
+        }
+      }
+    },
+    "tool_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "invocation_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pre_snapshot_id": {
+      "type": "string"
+    },
+    "post_snapshot_id": {
+      "type": "string"
+    },
+    "observation": {
+      "type": "object",
+      "required": [
+        "observation_id",
+        "snapshot_id",
+        "observability_status",
+        "exit_code",
+        "output_digest"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "observation_id": {
+          "type": "string",
+          "pattern": "^obs-[a-zA-Z0-9_-]+$"
+        },
+        "snapshot_id": {
+          "type": "string",
+          "description": "Repository snapshot observed by this execution."
+        },
+        "observability_status": {
+          "type": "string",
+          "enum": [
+            "FULL",
+            "PARTIAL",
+            "NOT_OBSERVABLE"
+          ]
+        },
+        "exit_code": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "output_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "unobserved_dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

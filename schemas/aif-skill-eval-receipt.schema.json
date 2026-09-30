@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif-skill-eval-receipt.schema.json",
+  "title": "AIF Skill Evaluation Receipt (SkillEvalReceipt)",
+  "description": "PHASE 2 Behavioral Evaluation Receipt capturing baseline (skill_enabled: false), treatment (skill_enabled: true), adversarial pressure, assertions, and snapshot-bound evidence.",
+  "type": "object",
+  "required": [
+    "kind",
+    "schema_version",
+    "skill_id",
+    "skill_revision",
+    "test_id",
+    "input",
+    "baseline",
+    "treatment",
+    "pressure",
+    "assertions",
+    "evidence",
+    "conclusion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "SkillEvalReceipt"
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "skill_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "skill_revision": {
+      "type": "string",
+      "minLength": 7
+    },
+    "test_id": {
+      "type": "string",
+      "pattern": "^(AAI-[0-9]{3}|P-[0-9]{3}|RED-[0-9]{2}|P-[0-9]{2})$"
+    },
+    "input": {
+      "type": "object",
+      "required": ["prompt", "repository_snapshot", "authority_context"],
+      "additionalProperties": false,
+      "properties": {
+        "prompt": { "type": "string", "minLength": 1 },
+        "repository_snapshot": { "type": "string", "minLength": 7 },
+        "authority_context": { "type": "string", "minLength": 1 }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "required": ["skill_enabled", "behavior", "observed_output"],
+      "additionalProperties": false,
+      "properties": {
+        "skill_enabled": { "const": false },
+        "behavior": { "type": "string", "minLength": 1 },
+        "observed_output": { "type": "string", "minLength": 1 }
+      }
+    },
+    "treatment": {
+      "type": "object",
+      "required": ["skill_enabled", "behavior", "observed_output"],
+      "additionalProperties": false,
+      "properties": {
+        "skill_enabled": { "const": true },
+        "behavior": { "type": "string", "minLength": 1 },
+        "observed_output": { "type": "string", "minLength": 1 }
+      }
+    },
+    "pressure": {
+      "type": "object",
+      "required": ["mutation_attempt", "observed_response"],
+      "additionalProperties": false,
+      "properties": {
+        "mutation_attempt": { "type": "string", "minLength": 1 },
+        "observed_response": { "type": "string", "minLength": 1 }
+      }
+    },
+    "assertions": {
+      "type": "object",
+      "required": ["expected", "observed", "passed", "failed", "unknown"],
+      "additionalProperties": false,
+      "properties": {
+        "expected": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "observed": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "passed": { "type": "array", "items": { "type": "string" } },
+        "failed": { "type": "array", "items": { "type": "string" } },
+        "unknown": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["commands", "artifacts", "snapshot", "timestamps"],
+      "additionalProperties": false,
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["declared_command", "executed_command", "exit_code"],
+            "additionalProperties": false,
+            "properties": {
+              "declared_command": { "type": "string" },
+              "executed_command": { "type": "string" },
+              "exit_code": { "type": "integer" }
+            }
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "snapshot": { "type": "string", "minLength": 7 },
+        "timestamps": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    },
+    "conclusion": {
+      "type": "object",
+      "required": ["status", "dimensions"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": ["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE", "NOT_OBSERVABLE"]
+        },
+        "dimensions": {
+          "type": "object",
+          "required": [
+            "trigger_precision",
+            "behavioral_correctness",
+            "safety_boundary_adherence",
+            "regression_stability"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "trigger_precision": { "enum": ["PASS", "FAIL", "UNKNOWN", "NOT_OBSERVABLE"] },
+            "behavioral_correctness": { "enum": ["PASS", "FAIL", "UNKNOWN", "NOT_OBSERVABLE"] },
+            "safety_boundary_adherence": { "enum": ["PASS", "FAIL", "UNKNOWN", "NOT_OBSERVABLE"] },
+            "regression_stability": { "enum": ["PASS", "FAIL", "UNKNOWN", "NOT_OBSERVABLE"] }
+          }
+        }
+      }
+    }
+  }
+}

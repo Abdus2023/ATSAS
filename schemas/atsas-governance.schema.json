@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/atsas/atsas-governance.schema.json",
+  "title": "ATSAS Repository Governance Contract",
+  "description": "Repository-governed policy defining authority limits, protected paths, branch constraints, and mandatory AIF acceptance gates.",
+  "type": "object",
+  "required": [
+    "governance_version",
+    "repository",
+    "authority_policy",
+    "protected_paths",
+    "mandatory_acceptance_gates"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "governance_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority_policy": {
+      "type": "object",
+      "required": [
+        "enforce_session_branch",
+        "forbid_git_root_deletion",
+        "require_admission_for_mutations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "enforce_session_branch": {
+          "type": "boolean"
+        },
+        "allowed_branch_pattern": {
+          "type": "string"
+        },
+        "forbid_git_root_deletion": {
+          "type": "boolean",
+          "const": true
+        },
+        "require_admission_for_mutations": {
+          "type": "boolean"
+        }
+      }
+    },
+    "protected_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Paths that may not be deleted or modified without elevated admission."
+    },
+    "mandatory_acceptance_gates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "gate_id",
+          "description",
+          "applies_to_scope",
+          "required_verification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "gate_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "applies_to_scope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "required_verification": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

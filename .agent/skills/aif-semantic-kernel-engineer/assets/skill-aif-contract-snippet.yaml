@@ -1,0 +1,9 @@
+aif:
+  version: "0.1"
+  consumes:
+    - SnapshotRef
+    - Request
+  produces:
+    - EvidenceRef
+    - Finding
+  mutates_repository: false

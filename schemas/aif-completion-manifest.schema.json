@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/aif-completion-manifest.schema.json",
+  "title": "AIF Assurance & Completion Manifest",
+  "description": "End-to-end AIF assurance contract binding Authority, Admission, Execution, Change Attribution, Observation, Verification, Evidence, Acceptance Criteria, and Completion.",
+  "type": "object",
+  "required": [
+    "aif_version",
+    "task_id",
+    "task_summary",
+    "authority_context",
+    "initial_snapshot_id",
+    "final_snapshot_id",
+    "snapshots",
+    "executions",
+    "evidence",
+    "claims",
+    "acceptance_criteria",
+    "completion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "aif_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authority_context": {
+      "type": "object",
+      "required": [
+        "repository",
+        "working_branch",
+        "governance_policy_ref",
+        "invoked_skills",
+        "invoked_tools"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "working_branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "governance_policy_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "invoked_skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "ATSAS skills used during the session (informational behavior trace; never treated as evidence)."
+        },
+        "invoked_tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "initial_snapshot_id": {
+      "type": "string",
+      "pattern": "^snap-[a-zA-Z0-9_-]+$"
+    },
+    "final_snapshot_id": {
+      "type": "string",
+      "pattern": "^snap-[a-zA-Z0-9_-]+$"
+    },
+    "snapshots": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "./aif-snapshot.schema.json"
+      }
+    },
+    "executions": {
+      "type": "array",
+      "items": {
+        "$ref": "./aif-execution.schema.json"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "./aif-evidence.schema.json"
+      }
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "./aif-claim.schema.json"
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "criterion_id",
+          "description",
+          "mandatory",
+          "required_scope",
+          "required_claim_ids",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "criterion_id": {
+            "type": "string",
+            "pattern": "^ac-[a-zA-Z0-9_-]+$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mandatory": {
+            "type": "boolean"
+          },
+          "required_scope": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required_claim_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "UNKNOWN",
+              "NOT_OBSERVABLE",
+              "PARTIAL",
+              "STALE",
+              "MISMATCH",
+              "CONTRADICTED"
+            ]
+          }
+        }
+      }
+    },
+    "completion": {
+      "type": "object",
+      "required": [
+        "status",
+        "final_snapshot_id",
+        "blocking_states",
+        "summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE",
+            "PARTIAL_COMPLETION",
+            "BLOCKED"
+          ]
+        },
+        "final_snapshot_id": {
+          "type": "string",
+          "pattern": "^snap-[a-zA-Z0-9_-]+$"
+        },
+        "blocking_states": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "UNKNOWN",
+              "NOT_OBSERVABLE",
+              "PARTIAL",
+              "STALE",
+              "MISMATCH",
+              "CONTRADICTED"
+            ]
+          }
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

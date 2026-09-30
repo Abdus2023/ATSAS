@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/finding.schema.json",
+  "title": "AIF-0.1 Finding",
+  "description": "Bounded detector/auditor finding separating severity from confidence and enforcing remediation_authorized=false (AIF-010, AIF-012).",
+  "type": "object",
+  "required": [
+    "finding_id",
+    "category",
+    "severity",
+    "proposition",
+    "subject",
+    "snapshot",
+    "evidence_refs",
+    "confidence",
+    "limitations"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "finding_id": { "type": "string", "minLength": 1 },
+    "category": { "type": "string", "minLength": 1 },
+    "severity": {
+      "enum": ["CRITICAL", "HIGH", "MODERATE", "LOW", "INFO"]
+    },
+    "proposition": { "type": "string", "minLength": 1 },
+    "subject": { "type": "string", "minLength": 1 },
+    "snapshot": { "type": "string", "minLength": 7 },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "confidence": {
+      "enum": ["CONFIRMED", "HIGH", "MEDIUM", "LOW", "HEURISTIC"]
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "remediation_authorized": {
+      "const": false
+    }
+  }
+}

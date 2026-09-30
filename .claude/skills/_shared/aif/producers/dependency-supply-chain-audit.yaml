@@ -1,0 +1,55 @@
+producer: dependency-supply-chain-audit
+version: "0.1.0"
+aif_version: "0.1"
+role: evidence-producer
+
+outputs:
+  evidence: true
+  findings: true
+  verification: limited
+
+produces:
+  - evidence
+  - findings
+  - verification
+
+does_not_produce:
+  - authority
+  - admission
+  - completion
+
+authority: false
+admission: false
+completion: false
+mutation: false
+
+snapshot_binding: required
+execution_binding: required
+
+claim_scope:
+  bounded: true
+  source_type: REPOSITORY_ARTIFACT
+  supported_propositions:
+    - "Manifest declares dependencies D at snapshot S."
+    - "Lockfile resolves dependencies R with integrity status I at snapshot S."
+    - "Artifact A is bound to BuildRecord B, ResolutionRecord R, LockfileRecord L, and DependencyManifestRecord M at snapshot S."
+  forbidden_propositions:
+    - "Dependencies are safe (from npm audit clean alone)."
+    - "Dependencies are insecure (from missing lockfile alone)."
+    - "Supply chain is established (without resolution, integrity, and provenance evidence)."
+
+finding_categories:
+  - SUPPLY_CHAIN_LOCKFILE
+  - SUPPLY_CHAIN_RESOLUTION
+  - SUPPLY_CHAIN_SOURCE
+  - SUPPLY_CHAIN_INTEGRITY
+  - SUPPLY_CHAIN_INSTALLATION
+  - SUPPLY_CHAIN_BUILD
+  - SUPPLY_CHAIN_ARTIFACT
+  - SUPPLY_CHAIN_VULNERABILITY
+  - SUPPLY_CHAIN_SNAPSHOT
+  - SUPPLY_CHAIN_GOVERNANCE
+
+limitations:
+  - read-only by default (never executes npm install, npm update, npm audit fix, or npm dedupe)
+  - enforces AIF-034..AIF-040 across manifest, lockfile, resolution, source, integrity, install, build, and artifact stages

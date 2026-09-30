@@ -1,0 +1,23 @@
+{
+  "tool_id": "aif-completion-eval",
+  "version": "0.1.0",
+  "description": "Pure-function AIF-0.1 CompletionResult evaluator over AcceptanceExpression, Claims, VerificationRecords, Evidence, and Snapshot (AIF-009, AIF-013, AIF-019, AIF-020).",
+  "capability_class": "READ_ONLY",
+  "side_effects": {
+    "mutates_repository": false,
+    "network_access": false,
+    "spawns_persistent_process": false
+  },
+  "required_authority": "READ_WORKSPACE",
+  "observability": {
+    "emits_signals": [
+      "exit_code",
+      "stdout",
+      "structured_metadata"
+    ],
+    "produces_verification_directly": false,
+    "known_blind_spots": [
+      "Consumes existing receipt/bundle evidence only; never manufactures missing evidence (AIF-013)"
+    ]
+  }
+}

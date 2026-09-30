@@ -1,0 +1,46 @@
+producer: evidence-receipt-generator
+version: "0.1.0"
+aif_version: "0.1"
+role: evidence-producer
+
+outputs:
+  evidence: true
+  findings: true
+  verification: limited
+
+produces:
+  - evidence
+  - findings
+  - verification
+
+does_not_produce:
+  - authority
+  - admission
+  - completion
+
+authority: false
+admission: false
+completion: false
+mutation: false
+
+snapshot_binding: required
+execution_binding: required
+
+claim_scope:
+  bounded: true
+  source_type: REPOSITORY_ARTIFACT
+  supported_propositions:
+    - "Receipt R records historical evidence E, coverage C, verifications V, and findings F bound to snapshot S with deterministic JCS digest receipt_id."
+  forbidden_propositions:
+    - "VALID_RECEIPT implies VERIFIED_CLAIMS."
+    - "Task is complete (completion belongs to arena-completion-gate)."
+
+finding_categories:
+  - PRODUCER_COMPLETION_STRIPPED
+  - EVIDENCE_INCOMPLETE
+  - EVIDENCE_INTEGRITY_FAILURE
+  - RECEIPT_NONDETERMINISM
+
+limitations:
+  - non-authoritative: assembles, normalizes, canonicalizes (RFC 8785 JCS), and validates receipts without granting authority or completion (AIF-041..AIF-048)
+  - completion_result is optional at the receipt layer and produced only by arena-completion-gate

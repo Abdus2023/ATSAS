@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/execution-record.schema.json",
+  "title": "AIF-0.1 ExecutionRecord & CIExecutionRecord",
+  "description": "Canonical execution primitive binding command/workflow, working_directory, environment_digest, tool, tool_version, timestamps, snapshots, 3-layer results, and optional CIExecutionRecord fields (AIF-004, AIF-004A, AIF-005, AIF-005A, AIF-028).",
+  "type": "object",
+  "required": [
+    "execution_id",
+    "request_id",
+    "actor",
+    "action",
+    "command",
+    "working_directory",
+    "environment_digest",
+    "tool",
+    "tool_version",
+    "started_at",
+    "ended_at",
+    "execution_state",
+    "exit_code",
+    "stdout_ref",
+    "stderr_ref",
+    "subject_snapshot",
+    "resulting_snapshot"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "execution_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "actor": { "type": "string", "minLength": 1 },
+    "action": { "type": "string", "minLength": 1 },
+    "command": { "type": "string", "minLength": 1 },
+    "working_directory": { "type": "string", "minLength": 1 },
+    "environment_digest": { "type": "string", "minLength": 7 },
+    "tool": { "type": "string", "minLength": 1 },
+    "tool_version": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "minLength": 10 },
+    "ended_at": { "type": "string", "minLength": 10 },
+    "execution_state": {
+      "enum": [
+        "NOT_STARTED",
+        "STARTED",
+        "EXECUTED",
+        "FAILED",
+        "CANCELLED",
+        "INTERRUPTED",
+        "NOT_OBSERVABLE"
+      ]
+    },
+    "exit_code": { "type": "integer" },
+    "stdout_ref": { "type": "string" },
+    "stderr_ref": { "type": "string" },
+    "subject_snapshot": { "type": "string", "minLength": 2 },
+    "resulting_snapshot": { "type": "string", "minLength": 2 },
+    "process_result": {
+      "enum": [
+        "EXITED_ZERO",
+        "EXITED_NONZERO",
+        "EXIT_MASKED",
+        "TIMED_OUT",
+        "SIGNAL_TERMINATED",
+        "NOT_EXECUTED"
+      ]
+    },
+    "test_result": {
+      "enum": [
+        "TEST_PASSED",
+        "TEST_FAILED",
+        "ZERO_TESTS_DISCOVERED",
+        "SKIPPED_ONLY",
+        "PARTIAL_EXECUTION",
+        "NOT_A_TEST_RUN"
+      ]
+    },
+    "semantic_result": {
+      "enum": [
+        "SUFFICIENT_FOR_CLAIM",
+        "INSUFFICIENT_FOR_CLAIM",
+        "IRRELEVANT_TO_CLAIM",
+        "TEST_SURFACE_WEAKENED",
+        "CONTRADICTS_CLAIM",
+        "UNAVAILABLE"
+      ]
+    },
+    "tests_discovered": { "type": "integer", "minimum": 0 },
+    "tests_executed": { "type": "integer", "minimum": 0 },
+    "tests_passed": { "type": "integer", "minimum": 0 },
+    "tests_failed": { "type": "integer", "minimum": 0 },
+    "tests_skipped": { "type": "integer", "minimum": 0 },
+    "executed_test_targets": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "test_execution_id": { "type": "string", "minLength": 1 },
+    "working_directory": { "type": "string", "minLength": 1 },
+    "tool": { "type": "string", "minLength": 1 },
+    "tool_version": { "type": "string", "minLength": 1 },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "discovered": { "type": ["integer", "string"] },
+        "selected": { "type": ["integer", "string"] },
+        "executed": { "type": ["integer", "string"] },
+        "skipped": { "type": ["integer", "string"] },
+        "filtered": { "type": ["integer", "string"] },
+        "failed": { "type": ["integer", "string"] }
+      }
+    },
+    "discovery_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "test_runner": { "type": "string" },
+        "command": { "type": "string" },
+        "discovery_rules": { "type": "string" },
+        "discovered_tests": { "type": "array", "items": { "type": "string" } },
+        "excluded_tests": { "type": "array", "items": { "type": "string" } },
+        "filters": { "type": "array", "items": { "type": "string" } },
+        "subject_snapshot": { "type": "string" }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "execution": {
+          "enum": ["NOT_STARTED", "RUNNING", "COMPLETED", "INTERRUPTED", "UNKNOWN"]
+        },
+        "outcome": {
+          "enum": ["PASS", "FAIL", "MIXED", "SKIPPED", "UNKNOWN"]
+        },
+        "coverage": {
+          "enum": ["COMPLETE", "PARTIAL", "UNKNOWN"]
+        },
+        "snapshot": {
+          "enum": ["MATCH", "MISMATCH", "UNKNOWN"]
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "run_id": { "type": "string", "minLength": 1 },
+    "workflow_id": { "type": "string", "minLength": 1 },
+    "workflow_name": { "type": "string", "minLength": 1 },
+    "workflow_file": { "type": "string", "minLength": 1 },
+    "event": { "type": "string", "minLength": 1 },
+    "repository": { "type": "string", "minLength": 1 },
+    "ref": { "type": "string", "minLength": 1 },
+    "commit_sha": { "type": "string", "minLength": 4 },
+    "workflow_sha": { "type": "string", "minLength": 4 },
+    "run_attempt": { "type": "integer", "minimum": 1 },
+    "status": {
+      "enum": ["NOT_FOUND", "CONFIGURED", "TRIGGERED", "RUNNING", "COMPLETED", "CANCELLED"]
+    },
+    "conclusion": {
+      "enum": ["SUCCESS", "FAILURE", "NEUTRAL", "CANCELLED", "UNKNOWN"]
+    },
+    "completed_at": { "type": ["string", "null"] },
+    "jobs": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "type": "object" }
+    }
+  }
+}

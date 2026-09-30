@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/claim.schema.json",
+  "title": "AIF-0.1 Claim",
+  "description": "Explicit, scope-bounded proposition requiring specific evidence at a target snapshot (AIF-006, AIF-006A, AIF-008, AIF-008A).",
+  "type": "object",
+  "required": [
+    "claim_id",
+    "subject",
+    "proposition",
+    "required_evidence",
+    "required_snapshot",
+    "status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "claim_id": { "type": "string", "minLength": 1 },
+    "subject": { "type": "string", "minLength": 1 },
+    "proposition": { "type": "string", "minLength": 5 },
+    "required_evidence": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "required_snapshot": { "type": "string", "minLength": 7 },
+    "status": {
+      "enum": [
+        "VERIFIED",
+        "PARTIAL",
+        "UNVERIFIED",
+        "UNKNOWN",
+        "NOT_REQUESTED",
+        "NOT_CHECKED",
+        "NOT_OBSERVABLE",
+        "CONTRADICTED",
+        "STALE",
+        "MISMATCH"
+      ]
+    }
+  }
+}

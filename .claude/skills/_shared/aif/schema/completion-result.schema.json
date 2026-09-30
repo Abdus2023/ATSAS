@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/completion-result.schema.json",
+  "title": "AIF-0.1 CompletionResult",
+  "description": "Pure evaluation result emitted by arena-completion-gate over AcceptanceExpression, Claims, VerificationRecords, Evidence, and Snapshot (AIF-013, AIF-019, AIF-020).",
+  "type": "object",
+  "required": [
+    "request_id",
+    "acceptance_expression",
+    "status",
+    "evaluated_claims",
+    "satisfied_requirements",
+    "unmet_requirements",
+    "blockers",
+    "unknowns",
+    "evidence_refs",
+    "evaluated_snapshot",
+    "generated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "request_id": { "type": "string", "minLength": 1 },
+    "acceptance_expression": {
+      "$ref": "acceptance-expression.schema.json"
+    },
+    "status": {
+      "enum": [
+        "COMPLETABLE",
+        "INCOMPLETE",
+        "BLOCKED",
+        "CONTRADICTED",
+        "INVALID",
+        "ACCEPTANCE_UNSPECIFIED",
+        "REJECTED",
+        "UNVERIFIED"
+      ]
+    },
+    "evaluated_claims": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "satisfied_requirements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "unmet_requirements": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "contradictions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evaluated_snapshot": { "type": "string", "minLength": 2 },
+    "generated_at": { "type": "string", "minLength": 10 },
+    "evaluator": { "type": "string", "minLength": 1 },
+    "evaluator_version": { "type": "string", "minLength": 1 }
+  }
+}

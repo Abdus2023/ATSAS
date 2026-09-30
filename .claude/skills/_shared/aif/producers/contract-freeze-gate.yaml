@@ -1,0 +1,43 @@
+producer: contract-freeze-gate
+version: "1.x"
+aif_version: "0.1"
+role: evidence-producer
+
+outputs:
+  evidence: true
+  findings: true
+  verification: limited
+
+produces:
+  - evidence
+  - findings
+  - verification
+
+does_not_produce:
+  - authority
+  - admission
+  - completion
+
+authority: false
+admission: false
+completion: false
+mutation: false
+
+snapshot_binding: required
+execution_binding: required
+
+claim_scope:
+  bounded: true
+  source_type: SCANNER_RESULT
+  supported_propositions:
+    - "The documentation contract satisfies the documentation freeze criteria."
+  forbidden_propositions:
+    - "The implementation is correct."
+    - "Task is complete."
+
+finding_categories:
+  - CONTRACT_FREEZE_CRITERIA
+
+limitations:
+  - evaluates documentation/contract freeze criteria only
+  - cannot establish implementation correctness unless implementation evidence is explicitly supplied

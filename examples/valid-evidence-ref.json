@@ -1,0 +1,16 @@
+{
+  "evidence_id": "evref-20260929-secret-scan-001",
+  "repository": "Abdus2023/ATSAS",
+  "subject": "Working-tree source and configuration files",
+  "scope": [".claude/skills/**", "schemas/**", "examples/**", "bin/**", "tests/**"],
+  "method": "STATIC_VERIFICATION",
+  "snapshot": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b:clean_worktree",
+  "limitations": ["regex_and_entropy_patterns_only", "does_not_scan_git_reflog"],
+  "source_type": "DETECTOR_SCAN",
+  "source_locator": ".claude/skills/secret-leak-scan/scripts/scan_secrets.py",
+  "captured_at": "2026-09-29T12:20:00Z",
+  "producer": "secret-leak-scan",
+  "producer_version": "0.1.0",
+  "claim_scope": "No HIGH-severity matches produced by secret-leak-scan against current working-tree source/config paths.",
+  "snapshot_independent": false
+}

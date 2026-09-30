@@ -1,0 +1,43 @@
+producer: contract-implementation-sync
+version: "1.x"
+aif_version: "0.1"
+role: evidence-producer
+
+outputs:
+  evidence: true
+  findings: true
+  verification: limited
+
+produces:
+  - evidence
+  - findings
+  - verification
+
+does_not_produce:
+  - authority
+  - admission
+  - completion
+
+authority: false
+admission: false
+completion: false
+mutation: false
+
+snapshot_binding: required
+execution_binding: required
+
+claim_scope:
+  bounded: true
+  source_type: SCANNER_RESULT
+  supported_propositions:
+    - "Exported symbols and structural interfaces match the declared contract surface for snapshot S."
+  forbidden_propositions:
+    - "The implementation is correct."
+    - "All runtime behavior satisfies the specification."
+
+finding_categories:
+  - CONTRACT_IMPLEMENTATION_DRIFT
+
+limitations:
+  - static structural/symbol alignment only
+  - does not execute runtime tests or prove behavioral correctness

@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif-evidence-ref.schema.json",
+  "title": "AIF Shared Evidence Reference (EvidenceRef v0.1)",
+  "description": "Canonical EvidenceRef used across all eight assurance components (C-01 .. C-08) and detector adapters. Enforces AIF-007 (5 mandatory fields: subject, scope, method, snapshot, limitations), AIF-014A (snapshot_independent), AIF-016 (bounded claim_scope), and AIF-018 (no SKILL_ASSERTION).",
+  "type": "object",
+  "required": [
+    "evidence_id",
+    "repository",
+    "subject",
+    "scope",
+    "method",
+    "snapshot",
+    "limitations",
+    "source_type",
+    "source_locator",
+    "captured_at",
+    "producer",
+    "producer_version",
+    "claim_scope",
+    "snapshot_independent"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "evidence_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subject": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What artifact, execution, or subsystem this evidence observes (AIF-007)."
+    },
+    "scope": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Explicit paths, components, or surfaces covered by this evidence (AIF-007)."
+    },
+    "method": {
+      "enum": [
+        "INDEPENDENT_EXECUTION",
+        "REPRODUCIBLE_COMMAND",
+        "STATIC_VERIFICATION",
+        "DIRECT_INSPECTION",
+        "CRYPTOGRAPHIC_DIGEST"
+      ],
+      "description": "How this evidence was obtained (AIF-007, AIF-006A)."
+    },
+    "snapshot": {
+      "type": "string",
+      "minLength": 7,
+      "description": "Composite snapshot digest (<commit_sha> or <commit_sha>:<staged_tree_sha>:<worktree_diff_sha256>) (AIF-002A, AIF-007)."
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Explicit limitations or blind spots of the evidence (AIF-007)."
+    },
+    "source_type": {
+      "enum": [
+        "PROCESS_EXECUTION",
+        "DETECTOR_SCAN",
+        "GIT_DIFF",
+        "STATIC_INSPECTION",
+        "CI_RUN",
+        "POLICY_DOC"
+      ]
+    },
+    "source_locator": {
+      "type": "string",
+      "minLength": 1
+    },
+    "captured_at": {
+      "type": "string",
+      "minLength": 10
+    },
+    "producer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "producer_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "claim_scope": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Bounded statement of what the evidence actually covers (never an unbounded universal claim, AIF-016)."
+    },
+    "snapshot_independent": {
+      "type": "boolean",
+      "description": "True only for authority/intake evidence that remains valid across S0->S3 code mutations (AIF-014A)."
+    }
+  }
+}

@@ -1,0 +1,45 @@
+producer: authorization-boundary-scan
+version: "1.x"
+aif_version: "0.1"
+role: evidence-producer
+
+outputs:
+  evidence: true
+  findings: true
+  verification: limited
+
+produces:
+  - evidence
+  - findings
+  - verification
+
+does_not_produce:
+  - authority
+  - admission
+  - completion
+
+authority: false
+admission: false
+completion: false
+mutation: false
+
+snapshot_binding: required
+execution_binding: required
+
+claim_scope:
+  bounded: true
+  source_type: SCANNER_RESULT
+  domain: content_and_security_authorization
+  supported_propositions:
+    - "No obvious unauthorized-distribution/access-control-bypass mechanism was detected by this scan."
+  forbidden_propositions:
+    - "Agent is authorized to modify repository."
+    - "Project is legally certified compliant."
+
+finding_categories:
+  - AUTHORIZATION_BOUNDARY
+
+limitations:
+  - evaluates content/distribution/access-control patterns in source and dependencies, never agent task authority (which belongs to arena-intake-and-authority)
+  - static keyword and dependency-name heuristic only
+  - does not perform full data-flow analysis

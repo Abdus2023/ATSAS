@@ -1,0 +1,524 @@
+{
+  "test_id": "P-006",
+  "aai_id": "P-006",
+  "category": "adversarial",
+  "target_skill": "dependency-supply-chain-audit",
+  "trigger": "Vulnerability scanner offline / unavailable",
+  "expected_classification": "NOT_OBSERVABLE",
+  "forbidden_inference": "scanner unavailable => 0 vulnerabilities found",
+  "expected_invariant_violation": "AIF-008A",
+  "invalid_bundle": {
+    "kind": "AIFCanonicalDataModelBundle",
+    "schema_version": "aif/0.1",
+    "receipt_id": "rcpt-20260929-kernel-001",
+    "request": {
+      "request_id": "req-20260929-canonical-kernel",
+      "actor": "arena-agent",
+      "repository": "Abdus2023/ATSAS",
+      "target_ref": "refs/heads/arena/01a0ecca-atsas",
+      "requested_actions": [
+        "INSPECT",
+        "CREATE",
+        "MODIFY",
+        "VERIFY"
+      ],
+      "authority_events": [
+        "auth-evt-001"
+      ],
+      "acceptance_expression": {
+        "op": "ALL",
+        "expressions": [
+          {
+            "op": "CLAIM",
+            "claim_id": "claim-scope-verified"
+          },
+          {
+            "op": "CLAIM",
+            "claim_id": "claim-test-suite-verified"
+          },
+          {
+            "op": "ANY",
+            "expressions": [
+              {
+                "op": "CLAIM",
+                "claim_id": "claim-ci-current-head-verified"
+              },
+              {
+                "op": "CLAIM",
+                "claim_id": "claim-local-verification-explicitly-allowed"
+              }
+            ]
+          }
+        ]
+      },
+      "constraints": [
+        "no_premature_skill_md_authoring",
+        "no_unrequested_git_commits"
+      ],
+      "created_at": "2026-09-29T12:00:00Z"
+    },
+    "admission": {
+      "request_id": "req-20260929-canonical-kernel",
+      "admission_status": "ADMITTED",
+      "admitted_actions": [
+        "INSPECT",
+        "CREATE",
+        "MODIFY",
+        "VERIFY"
+      ],
+      "admitted_paths": [
+        ".claude/assurance/**",
+        "schemas/**",
+        "examples/**",
+        "bin/**",
+        "tests/**",
+        "README.md",
+        "ARENA_*.md"
+      ],
+      "excluded_actions": [
+        "GIT_PUSH",
+        "CREATE_SKILL_MD"
+      ],
+      "excluded_paths": [
+        ".git/**",
+        ".claude/skills/**/SKILL.md"
+      ],
+      "blockers": [],
+      "clarifications": [],
+      "authority_refs": [
+        "auth-evt-001"
+      ],
+      "intake_snapshot": "snap-s0-intake"
+    },
+    "snapshots": [
+      {
+        "snapshot_id": "snap-base-000",
+        "role": "comparison_base",
+        "repository": "Abdus2023/ATSAS",
+        "ref": "refs/heads/main",
+        "commit": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+        "working_tree_state": "CLEAN",
+        "index_state": "CLEAN",
+        "captured_at": "2026-09-29T11:59:00Z",
+        "content_digest": "sha256:15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+        "metadata_digest": "sha256:meta-base-000"
+      },
+      {
+        "snapshot_id": "snap-s0-intake",
+        "role": "intake_snapshot",
+        "repository": "Abdus2023/ATSAS",
+        "ref": "refs/heads/arena/01a0ecca-atsas",
+        "commit": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+        "working_tree_state": "DIRTY",
+        "index_state": "CLEAN",
+        "captured_at": "2026-09-29T12:00:01Z",
+        "content_digest": "sha256:s0-content-digest-001",
+        "metadata_digest": "sha256:s0-meta-digest-001"
+      },
+      {
+        "snapshot_id": "snap-s1-exec",
+        "role": "execution_snapshot",
+        "repository": "Abdus2023/ATSAS",
+        "ref": "refs/heads/arena/01a0ecca-atsas",
+        "commit": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+        "working_tree_state": "DIRTY",
+        "index_state": "CLEAN",
+        "captured_at": "2026-09-29T12:10:00Z",
+        "content_digest": "sha256:s1-content-digest-002",
+        "metadata_digest": "sha256:s1-meta-digest-002"
+      },
+      {
+        "snapshot_id": "snap-s1-exec",
+        "role": "verification_snapshot",
+        "repository": "Abdus2023/ATSAS",
+        "ref": "refs/heads/arena/01a0ecca-atsas",
+        "commit": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+        "working_tree_state": "DIRTY",
+        "index_state": "CLEAN",
+        "captured_at": "2026-09-29T12:15:00Z",
+        "content_digest": "sha256:s1-content-digest-002",
+        "metadata_digest": "sha256:s1-meta-digest-002"
+      },
+      {
+        "snapshot_id": "snap-s1-exec",
+        "role": "current_snapshot",
+        "repository": "Abdus2023/ATSAS",
+        "ref": "refs/heads/arena/01a0ecca-atsas",
+        "commit": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+        "working_tree_state": "DIRTY",
+        "index_state": "CLEAN",
+        "captured_at": "2026-09-29T12:16:00Z",
+        "content_digest": "sha256:s1-content-digest-002",
+        "metadata_digest": "sha256:s1-meta-digest-002"
+      }
+    ],
+    "authority_events": [
+      {
+        "event_id": "auth-evt-001",
+        "request_id": "req-20260929-canonical-kernel",
+        "actor": "arena-agent",
+        "authority_basis": "EXPLICIT_USER_DIRECTIVE",
+        "authority_status": "AUTHORIZED",
+        "action_scope": [
+          "INSPECT",
+          "CREATE",
+          "MODIFY",
+          "VERIFY"
+        ],
+        "path_scope": [
+          ".claude/assurance/**",
+          "schemas/**",
+          "examples/**",
+          "bin/**",
+          "tests/**",
+          "README.md",
+          "ARENA_*.md"
+        ],
+        "restrictions": [
+          "do_not_author_skill_md_before_kernel_freeze"
+        ],
+        "issued_at": "2026-09-29T12:00:00Z",
+        "effective_from": "2026-09-29T12:00:00Z",
+        "expires_at": "2026-09-30T00:00:00Z",
+        "issuer": "arena-user",
+        "evidence": [
+          "ev-auth-prompt-001"
+        ]
+      }
+    ],
+    "execution_records": [
+      {
+        "execution_id": "exec-001",
+        "request_id": "req-20260929-canonical-kernel",
+        "actor": "arena-agent",
+        "action": "VERIFY",
+        "command": "./tests/run-tests.sh",
+        "working_directory": "/home/user/ATSAS",
+        "environment_digest": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+        "tool": "bash",
+        "tool_version": "5.2",
+        "started_at": "2026-09-29T12:15:00Z",
+        "ended_at": "2026-09-29T12:15:02Z",
+        "execution_state": "EXECUTED",
+        "exit_code": 0,
+        "stdout_ref": "ev-test-stdout-001",
+        "stderr_ref": "",
+        "subject_snapshot": "snap-s1-exec",
+        "resulting_snapshot": "snap-s1-exec",
+        "process_result": "EXITED_ZERO",
+        "test_result": "TEST_PASSED",
+        "semantic_result": "SUFFICIENT_FOR_CLAIM"
+      }
+    ],
+    "change_records": [
+      {
+        "path": ".claude/assurance/canonical-data-model.md",
+        "change_type": "MODIFIED",
+        "before_digest": "sha256:before-cdm-001",
+        "after_digest": "sha256:after-cdm-002",
+        "intake_state": "DIRTY",
+        "execution_state": "DIRTY",
+        "attribution": "AGENT_ATTRIBUTED",
+        "attribution_basis": "exec-write-canonical-data-model",
+        "generated": false,
+        "generated_by": null
+      }
+    ],
+    "claims": [
+      {
+        "claim_id": "claim-scope-verified",
+        "subject": "Repository working-tree mutations",
+        "proposition": "All agent-attributed changes between intake_snapshot and execution_snapshot remain within admitted_paths.",
+        "required_evidence": [
+          "ev-scope-diff-001"
+        ],
+        "required_snapshot": "snap-s1-exec",
+        "status": "VERIFIED"
+      },
+      {
+        "claim_id": "claim-test-suite-verified",
+        "subject": "ATSAS schemas, skills, and assurance specifications",
+        "proposition": "All checks in ./tests/run-tests.sh exit 0 at verification_snapshot.",
+        "required_evidence": [
+          "ev-test-stdout-001"
+        ],
+        "required_snapshot": "snap-s1-exec",
+        "status": "NOT_OBSERVABLE"
+      },
+      {
+        "claim_id": "claim-ci-current-head-verified",
+        "subject": "Remote CI pipeline",
+        "proposition": "GitHub Actions workflow passed on current_snapshot.",
+        "required_evidence": [],
+        "required_snapshot": "snap-s1-exec",
+        "status": "NOT_OBSERVABLE"
+      },
+      {
+        "claim_id": "claim-local-verification-explicitly-allowed",
+        "subject": "Task authority and local verification policy",
+        "proposition": "User directive explicitly authorizes local ./tests/run-tests.sh verification in sandbox.",
+        "required_evidence": [
+          "ev-auth-prompt-001",
+          "ev-test-stdout-001"
+        ],
+        "required_snapshot": "snap-s1-exec",
+        "status": "VERIFIED"
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "ev-auth-prompt-001",
+        "producer": "arena-intake-and-authority",
+        "producer_version": "0.1.0",
+        "source_type": "HUMAN_AUTHORIZATION",
+        "source_locator": "session:req-20260929-canonical-kernel",
+        "captured_at": "2026-09-29T12:00:00Z",
+        "subject_snapshot": "snap-s0-intake",
+        "scope": [
+          ".claude/assurance/**",
+          "schemas/**",
+          "examples/**",
+          "bin/**",
+          "tests/**"
+        ],
+        "content_digest": "sha256:auth-digest-001",
+        "provenance": [
+          "auth-evt-001"
+        ],
+        "claim_scope": "User directive authorizing AIF v0.1 Canonical Data Model and Semantic Kernel layout review.",
+        "limitations": [],
+        "snapshot_independent": true
+      },
+      {
+        "evidence_id": "ev-scope-diff-001",
+        "producer": "agent-change-scope-audit",
+        "producer_version": "0.1.0",
+        "source_type": "GIT_OBJECT",
+        "source_locator": "git-diff:snap-s0-intake..snap-s1-exec",
+        "captured_at": "2026-09-29T12:14:00Z",
+        "subject_snapshot": "snap-s1-exec",
+        "scope": [
+          ".claude/assurance/**",
+          "schemas/**",
+          "examples/**",
+          "bin/**",
+          "tests/**",
+          "README.md",
+          "ARENA_*.md"
+        ],
+        "content_digest": "sha256:diff-digest-001",
+        "provenance": [
+          "snap-s0-intake",
+          "snap-s1-exec"
+        ],
+        "claim_scope": "All modified paths between snap-s0-intake and snap-s1-exec are within admitted_paths.",
+        "limitations": [],
+        "snapshot_independent": false
+      },
+      {
+        "evidence_id": "ev-test-stdout-001",
+        "producer": "test-execution-and-evidence-audit",
+        "producer_version": "0.1.0",
+        "source_type": "COMMAND_OUTPUT",
+        "source_locator": "exec-001",
+        "captured_at": "2026-09-29T12:15:02Z",
+        "subject_snapshot": "snap-s1-exec",
+        "scope": [
+          ".claude/assurance/**",
+          "spec/**",
+          "schemas/**",
+          "examples/**",
+          "tests/**"
+        ],
+        "content_digest": "sha256:test-stdout-digest-001",
+        "provenance": [
+          "exec-001"
+        ],
+        "claim_scope": "All repository schemas, examples, skills, and assurance specifications pass ./tests/run-tests.sh at snap-s1-exec.",
+        "limitations": [
+          "local_sandbox_execution_only"
+        ],
+        "snapshot_independent": false
+      }
+    ],
+    "coverage": [
+      {
+        "evidence_id": "ev-scope-diff-001",
+        "claim_id": "claim-scope-verified",
+        "subject_match": true,
+        "snapshot_match": true,
+        "scope_match": true,
+        "method_match": true,
+        "freshness": "FRESH",
+        "adequacy": "SUFFICIENT",
+        "limitations": []
+      },
+      {
+        "evidence_id": "ev-test-stdout-001",
+        "claim_id": "claim-test-suite-verified",
+        "subject_match": true,
+        "snapshot_match": true,
+        "scope_match": true,
+        "method_match": true,
+        "freshness": "FRESH",
+        "adequacy": "SUFFICIENT",
+        "limitations": [
+          "local_sandbox_execution_only"
+        ]
+      },
+      {
+        "evidence_id": "ev-auth-prompt-001",
+        "claim_id": "claim-local-verification-explicitly-allowed",
+        "subject_match": true,
+        "snapshot_match": true,
+        "scope_match": true,
+        "method_match": true,
+        "freshness": "SNAPSHOT_INDEPENDENT",
+        "adequacy": "SUFFICIENT",
+        "limitations": []
+      }
+    ],
+    "verifications": [
+      {
+        "verification_id": "ver-001",
+        "claim_id": "claim-scope-verified",
+        "method": "GIT_DIFF_SCOPE_CHECK",
+        "subject_snapshot": "snap-s1-exec",
+        "evidence_refs": [
+          "ev-scope-diff-001"
+        ],
+        "coverage": [
+          "ev-scope-diff-001"
+        ],
+        "result": "VERIFIED",
+        "verified_at": "2026-09-29T12:14:01Z",
+        "verifier": "agent-change-scope-audit"
+      },
+      {
+        "verification_id": "ver-002",
+        "claim_id": "claim-test-suite-verified",
+        "method": "REPRODUCIBLE_COMMAND",
+        "subject_snapshot": "snap-s1-exec",
+        "evidence_refs": [
+          "ev-test-stdout-001"
+        ],
+        "coverage": [
+          "ev-test-stdout-001"
+        ],
+        "result": "VERIFIED",
+        "verified_at": "2026-09-29T12:15:02Z",
+        "verifier": "test-execution-and-evidence-audit"
+      },
+      {
+        "verification_id": "ver-003",
+        "claim_id": "claim-local-verification-explicitly-allowed",
+        "method": "DIRECT_INSPECTION",
+        "subject_snapshot": "snap-s1-exec",
+        "evidence_refs": [
+          "ev-auth-prompt-001",
+          "ev-test-stdout-001"
+        ],
+        "coverage": [
+          "ev-auth-prompt-001"
+        ],
+        "result": "VERIFIED",
+        "verified_at": "2026-09-29T12:15:03Z",
+        "verifier": "arena-completion-gate"
+      }
+    ],
+    "findings": [
+      {
+        "finding_id": "find-001",
+        "category": "CI_NOT_CONFIGURED",
+        "severity": "INFO",
+        "proposition": "No .github/workflows directory exists in repository; remote CI execution is NOT_OBSERVABLE.",
+        "subject": ".github/workflows",
+        "snapshot": "snap-s1-exec",
+        "evidence_refs": [],
+        "confidence": "CONFIRMED",
+        "limitations": [],
+        "remediation_authorized": false
+      }
+    ],
+    "acceptance_expression": {
+      "op": "ALL",
+      "expressions": [
+        {
+          "op": "CLAIM",
+          "claim_id": "claim-scope-verified"
+        },
+        {
+          "op": "CLAIM",
+          "claim_id": "claim-test-suite-verified"
+        },
+        {
+          "op": "ANY",
+          "expressions": [
+            {
+              "op": "CLAIM",
+              "claim_id": "claim-ci-current-head-verified"
+            },
+            {
+              "op": "CLAIM",
+              "claim_id": "claim-local-verification-explicitly-allowed"
+            }
+          ]
+        }
+      ]
+    },
+    "completion_result": {
+      "request_id": "req-20260929-canonical-kernel",
+      "acceptance_expression": {
+        "op": "ALL",
+        "expressions": [
+          {
+            "op": "CLAIM",
+            "claim_id": "claim-scope-verified"
+          },
+          {
+            "op": "CLAIM",
+            "claim_id": "claim-test-suite-verified"
+          },
+          {
+            "op": "ANY",
+            "expressions": [
+              {
+                "op": "CLAIM",
+                "claim_id": "claim-ci-current-head-verified"
+              },
+              {
+                "op": "CLAIM",
+                "claim_id": "claim-local-verification-explicitly-allowed"
+              }
+            ]
+          }
+        ]
+      },
+      "status": "COMPLETABLE",
+      "evaluated_claims": [
+        "claim-scope-verified",
+        "claim-test-suite-verified",
+        "claim-ci-current-head-verified",
+        "claim-local-verification-explicitly-allowed"
+      ],
+      "satisfied_requirements": [
+        "claim-scope-verified",
+        "claim-test-suite-verified",
+        "claim-local-verification-explicitly-allowed"
+      ],
+      "unmet_requirements": [],
+      "blockers": [],
+      "unknowns": [
+        "claim-ci-current-head-verified"
+      ],
+      "evidence_refs": [
+        "ev-auth-prompt-001",
+        "ev-scope-diff-001",
+        "ev-test-stdout-001"
+      ],
+      "evaluated_snapshot": "snap-s1-exec",
+      "generated_at": "2026-09-29T12:16:00Z"
+    },
+    "generated_at": "2026-09-29T12:16:00Z"
+  }
+}

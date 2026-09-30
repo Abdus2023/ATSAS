@@ -1,0 +1,43 @@
+producer: docs-integrity-check
+version: "1.x"
+aif_version: "0.1"
+role: evidence-producer
+
+outputs:
+  evidence: true
+  findings: true
+  verification: limited
+
+produces:
+  - evidence
+  - findings
+  - verification
+
+does_not_produce:
+  - authority
+  - admission
+  - completion
+
+authority: false
+admission: false
+completion: false
+mutation: false
+
+snapshot_binding: required
+execution_binding: required
+
+claim_scope:
+  bounded: true
+  source_type: SCANNER_RESULT
+  supported_propositions:
+    - "Required documentation references resolve for snapshot S."
+  forbidden_propositions:
+    - "The documentation is complete and accurate."
+    - "The implementation is correct."
+
+finding_categories:
+  - DOCS_INTEGRITY
+
+limitations:
+  - verifies relative link resolution and Markdown code-fence balance only
+  - does not verify semantic truth of prose claims

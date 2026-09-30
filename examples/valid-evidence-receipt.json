@@ -1,0 +1,118 @@
+{
+  "receipt_id": "rcpt-20260929-atsas-001",
+  "schema_version": "0.1.0",
+  "subject": {
+    "repository": "Abdus2023/ATSAS",
+    "branch": "arena/01a0ecca-atsas",
+    "comparison_base": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+    "intake_snapshot": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+    "execution_snapshot": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+    "verification_snapshot": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+    "head_commit": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b"
+  },
+  "request": {
+    "request_id": "req-20260929-assurance-contracts-v01",
+    "requested_actions": [
+      "Formalize v0.1 normative interface contracts for the eight assurance components",
+      "Validate three-snapshot provenance model and ArenaEvidenceReceipt v0.1 schema"
+    ],
+    "acceptance_criteria": [
+      "All 10 JSON Schemas validate cleanly under Draft 2020-12",
+      "All 14 existing .claude/skills/ pass validate_skill.py",
+      "All 8 component contracts specify inputs, outputs, states, invariants, evidence requirements, and forbidden inferences"
+    ]
+  },
+  "authority": {
+    "actor": "arena-agent",
+    "authority_basis": "explicit_user_directive",
+    "authority_status": "ADMITTED",
+    "scope": [
+      ".claude/assurance/**",
+      "spec/**",
+      "schemas/**",
+      "examples/**",
+      "bin/aif-verify",
+      "tests/run-tests.sh",
+      "README.md",
+      "ARENA_*.md"
+    ]
+  },
+  "execution": {
+    "status": "EXECUTED",
+    "actions": [
+      "update_assurance_contracts",
+      "run_verification_suite"
+    ],
+    "commands": [
+      "./tests/run-tests.sh",
+      "python3 .claude/skills/secret-leak-scan/scripts/scan_secrets.py ."
+    ],
+    "changed_paths": [
+      ".claude/assurance/invariants.md",
+      ".claude/assurance/evidence-schema.md",
+      ".claude/assurance/capability-map.md",
+      ".claude/assurance/component-contracts.md",
+      "schemas/aif-evidence-receipt.schema.json",
+      "examples/valid-evidence-receipt.json"
+    ]
+  },
+  "verification": {
+    "checks": [
+      "schema_conformance",
+      "skill_structural_validation",
+      "working_tree_secret_scan",
+      "markdown_fence_and_link_integrity"
+    ],
+    "snapshot_binding": "STABLE_MATCH",
+    "result": "VERIFIED"
+  },
+  "evidence": {
+    "artifacts": [
+      "schemas/aif-evidence-receipt.schema.json",
+      "schemas/aif-skill-eval-receipt.schema.json",
+      ".claude/assurance/component-contracts.md"
+    ],
+    "commands": [
+      "./tests/run-tests.sh",
+      "python3 .claude/skills/secret-leak-scan/scripts/scan_secrets.py ."
+    ],
+    "outputs": [
+      "Summary: all checks passed, 0 failed",
+      "0 high-confidence hit(s), 0 low-confidence hit(s) — scanned . (current working tree only)"
+    ],
+    "exit_codes": [
+      0,
+      0
+    ],
+    "timestamps": [
+      "2026-09-29T12:15:00Z",
+      "2026-09-29T12:15:02Z"
+    ],
+    "provenance": [
+      "detector:secret-leak-scan@0.1.0(scope=working_tree_only)",
+      "verifier:aif-verify@0.1.0(snapshot=15f7fa01778f06821d1c5c9c285bb0d666e04f8b)"
+    ]
+  },
+  "findings": {
+    "facts": [
+      "SCANNER_NO_MATCH: 0 HIGH and 0 LOW matches in current working tree via secret-leak-scan",
+      "LOCAL_TEST_CAPABILITY: ./tests/run-tests.sh executed with exit_code=0"
+    ],
+    "blockers": [],
+    "unknowns": [
+      "CI_CONFIGURATION: NOT_OBSERVED (.github/workflows not present)",
+      "GIT_HISTORY_SECRET_SCAN: NOT_EXECUTED (working-tree scanner only)"
+    ],
+    "stale_evidence": [],
+    "mismatches": []
+  },
+  "conclusion": {
+    "status": "COMPLETABLE",
+    "verified_claims": [
+      "All 10 JSON Schemas and valid/invalid manifests pass ./bin/aif-verify at S2==S1==HEAD",
+      "No matching credentials detected by secret-leak-scan in the inspected current-tree scope"
+    ],
+    "unverified_claims": [],
+    "unmet_criteria": []
+  }
+}

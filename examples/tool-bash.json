@@ -1,0 +1,25 @@
+{
+  "tool_id": "bash",
+  "version": "1.0.0",
+  "description": "Execute a sandboxed shell command in the repository workspace and capture raw execution observations.",
+  "capability_class": "PROCESS_EXECUTION",
+  "side_effects": {
+    "mutates_repository": true,
+    "network_access": true,
+    "spawns_persistent_process": false
+  },
+  "required_authority": "EXECUTE_SANDBOX_COMMAND",
+  "observability": {
+    "emits_signals": [
+      "exit_code",
+      "stdout",
+      "stderr",
+      "structured_metadata"
+    ],
+    "produces_verification_directly": false,
+    "known_blind_spots": [
+      "Detached background processes killed at command timeout",
+      "External remote state not echoed to stdout/stderr"
+    ]
+  }
+}

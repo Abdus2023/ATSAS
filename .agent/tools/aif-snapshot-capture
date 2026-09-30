@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""
+.agent/tools/aif-snapshot-capture — Deterministic AIF-0.1 SnapshotRef Capture Tool.
+
+Captures a canonical AIF-0.1 SnapshotRef object for a repository at a specified role:
+  comparison_base | intake_snapshot | execution_snapshot | verification_snapshot | current_snapshot
+
+Enforces AIF-002 and AIF-002A:
+  HEAD = abc123, working_tree_state = DIRTY
+    !=
+  HEAD = abc123, working_tree_state = CLEAN
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+from typing import List, Tuple
+
+
+VALID_ROLES = (
+    "comparison_base",
+    "intake_snapshot",
+    "execution_snapshot",
+    "verification_snapshot",
+    "current_snapshot",
+)
+
+
+def run_git(repo_dir: Path, args: List[str]) -> Tuple[int, str, str]:
+    proc = subprocess.run(
+        ["git", *args],
+        cwd=str(repo_dir),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
+
+
+def capture_snapshot(repo_dir: Path, role: str, snapshot_id: str | None = None) -> dict:
+    rc_commit, commit_sha, _ = run_git(repo_dir, ["rev-parse", "HEAD"])
+    if rc_commit != 0 or not commit_sha:
+        commit_sha = "0000000"
+
+    rc_ref, sym_ref, _ = run_git(repo_dir, ["symbolic-ref", "-q", "HEAD"])
+    if rc_ref != 0 or not sym_ref:
+        sym_ref = "HEAD"
+
+    rc_remote, remote_url, _ = run_git(repo_dir, ["config", "--get", "remote.origin.url"])
+    repo_name = repo_dir.name
+    if rc_remote == 0 and remote_url:
+        cleaned = remote_url.rstrip("/").removesuffix(".git")
+        parts = cleaned.replace(":", "/").split("/")
+        if len(parts) >= 2:
+            repo_name = f"{parts[-2]}/{parts[-1]}"
+
+    rc_status, porcelain, _ = run_git(repo_dir, ["status", "--porcelain=v1"])
+    working_tree_state = "UNKNOWN"
+    index_state = "UNKNOWN"
+    if rc_status == 0:
+        working_tree_state = "CLEAN"
+        index_state = "CLEAN"
+        for line in porcelain.splitlines():
+            if len(line) < 2:
+                continue
+            xy = line[:2]
+            if xy == "??":
+                working_tree_state = "DIRTY"
+            else:
+                if xy[0] != " ":
+                    index_state = "DIRTY"
+                if xy[1] != " ":
+                    working_tree_state = "DIRTY"
+
+    rc_diff, diff_out, _ = run_git(repo_dir, ["diff", "HEAD"])
+    content_seed = f"{commit_sha}\n{porcelain}\n{diff_out if rc_diff == 0 else ''}"
+    content_digest = "sha256:" + hashlib.sha256(content_seed.encode("utf-8")).hexdigest()
+
+    meta_seed = f"{repo_name}:{sym_ref}:{commit_sha}:{working_tree_state}:{index_state}"
+    metadata_digest = "sha256:" + hashlib.sha256(meta_seed.encode("utf-8")).hexdigest()
+
+    captured_at = (
+        datetime.datetime.now(datetime.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+    if not snapshot_id:
+        short_content = content_digest.split(":", 1)[1][:12]
+        snapshot_id = f"{commit_sha[:12]}:{working_tree_state.lower()}:{short_content}"
+
+    return {
+        "snapshot_id": snapshot_id,
+        "role": role,
+        "repository": repo_name,
+        "ref": sym_ref,
+        "commit": commit_sha,
+        "working_tree_state": working_tree_state,
+        "index_state": index_state,
+        "captured_at": captured_at,
+        "content_digest": content_digest,
+        "metadata_digest": metadata_digest,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Capture a canonical AIF-0.1 SnapshotRef for a repository."
+    )
+    parser.add_argument(
+        "--repo",
+        type=Path,
+        default=Path("."),
+        help="Path to the git repository (default: current directory).",
+    )
+    parser.add_argument(
+        "--role",
+        choices=VALID_ROLES,
+        default="current_snapshot",
+        help="Canonical snapshot role.",
+    )
+    parser.add_argument(
+        "--snapshot-id",
+        default=None,
+        help="Optional explicit snapshot_id override.",
+    )
+    args = parser.parse_args()
+
+    snap = capture_snapshot(args.repo.resolve(), args.role, args.snapshot_id)
+    print(json.dumps(snap, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

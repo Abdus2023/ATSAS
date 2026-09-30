@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/execution-record.schema.json",
+  "title": "AIF-0.1 ExecutionRecord",
+  "description": "Canonical execution primitive binding command, working_directory, environment_digest, tool, tool_version, timestamps, snapshots, and 3-layer results (AIF-004, AIF-004A, AIF-005, AIF-005A).",
+  "type": "object",
+  "required": [
+    "execution_id",
+    "request_id",
+    "actor",
+    "action",
+    "command",
+    "working_directory",
+    "environment_digest",
+    "tool",
+    "tool_version",
+    "started_at",
+    "ended_at",
+    "execution_state",
+    "exit_code",
+    "stdout_ref",
+    "stderr_ref",
+    "subject_snapshot",
+    "resulting_snapshot"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "execution_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "actor": { "type": "string", "minLength": 1 },
+    "action": { "type": "string", "minLength": 1 },
+    "command": { "type": "string", "minLength": 1 },
+    "working_directory": { "type": "string", "minLength": 1 },
+    "environment_digest": { "type": "string", "minLength": 7 },
+    "tool": { "type": "string", "minLength": 1 },
+    "tool_version": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "minLength": 10 },
+    "ended_at": { "type": "string", "minLength": 10 },
+    "execution_state": {
+      "enum": [
+        "NOT_STARTED",
+        "STARTED",
+        "EXECUTED",
+        "FAILED",
+        "CANCELLED",
+        "INTERRUPTED",
+        "NOT_OBSERVABLE"
+      ]
+    },
+    "exit_code": { "type": "integer" },
+    "stdout_ref": { "type": "string" },
+    "stderr_ref": { "type": "string" },
+    "subject_snapshot": { "type": "string", "minLength": 7 },
+    "resulting_snapshot": { "type": "string", "minLength": 7 },
+    "process_result": {
+      "enum": [
+        "EXITED_ZERO",
+        "EXITED_NONZERO",
+        "TIMED_OUT",
+        "SIGNAL_TERMINATED",
+        "NOT_EXECUTED"
+      ]
+    },
+    "test_result": {
+      "enum": [
+        "TEST_PASSED",
+        "TEST_FAILED",
+        "ZERO_TESTS_DISCOVERED",
+        "SKIPPED_ONLY",
+        "PARTIAL_EXECUTION",
+        "NOT_A_TEST_RUN"
+      ]
+    },
+    "semantic_result": {
+      "enum": [
+        "SUFFICIENT_FOR_CLAIM",
+        "INSUFFICIENT_FOR_CLAIM",
+        "IRRELEVANT_TO_CLAIM",
+        "CONTRADICTS_CLAIM",
+        "UNAVAILABLE"
+      ]
+    }
+  }
+}

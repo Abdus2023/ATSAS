@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""
+.agent/tools/aif-change-audit — Deterministic AIF-0.1 ChangeRecord & Scope Auditor.
+
+Computes ChangeRecord[] and scope Findings for working-tree or ref-to-ref transitions,
+enforcing:
+  - AIF-002 / AIF-003: Scope is snapshot-relative; agent changes require before/after provenance
+  - AIF-003A: State transition DIFF(S0,S1) is not actor causality without attribution_basis
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Dict, List
+
+
+def file_sha256(path: Path) -> str:
+    if not path.is_file():
+        return "sha256:absent"
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        while chunk := f.read(65536):
+            h.update(chunk)
+    return "sha256:" + h.hexdigest()
+
+
+def path_matches(path: str, patterns: List[str]) -> bool:
+    for pat in patterns:
+        if pat == path:
+            return True
+        if pat.endswith("/**"):
+            prefix = pat[:-3]
+            if path == prefix or path.startswith(prefix + "/"):
+                return True
+    return False
+
+
+def audit_changes(
+    repo_dir: Path,
+    admitted_paths: List[str],
+    excluded_paths: List[str],
+    attribution: str,
+    attribution_basis: str,
+) -> Dict[str, Any]:
+    proc = subprocess.run(
+        ["git", "status", "--porcelain=v1"],
+        cwd=str(repo_dir),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    change_records: List[Dict[str, Any]] = []
+    scope_violations: List[str] = []
+
+    for line in proc.stdout.splitlines():
+        if len(line) < 4:
+            continue
+        xy = line[:2]
+        rel_path = line[3:].strip()
+        if " -> " in rel_path:
+            rel_path = rel_path.split(" -> ", 1)[1].strip()
+
+        if xy == "??":
+            change_type = "ADDED"
+            intake_state = "ABSENT"
+            before_digest = "sha256:absent"
+        elif "D" in xy:
+            change_type = "DELETED"
+            intake_state = "CLEAN"
+            before_digest = "sha256:tracked-head"
+        else:
+            change_type = "MODIFIED"
+            intake_state = "CLEAN"
+            before_digest = "sha256:tracked-head"
+
+        after_digest = file_sha256(repo_dir / rel_path)
+
+        effective_attr = attribution
+        if effective_attr == "AGENT_ATTRIBUTED" and attribution_basis in (
+            "",
+            "diff_only",
+            "none",
+            "unknown",
+        ):
+            # AIF-003A: Never infer AGENT_ATTRIBUTED from diff_only
+            effective_attr = "UNATTRIBUTED"
+
+        rec = {
+            "path": rel_path,
+            "change_type": change_type,
+            "before_digest": before_digest,
+            "after_digest": after_digest,
+            "intake_state": intake_state,
+            "execution_state": "DIRTY" if after_digest != "sha256:absent" else "ABSENT",
+            "attribution": effective_attr,
+            "attribution_basis": attribution_basis or "working_tree_status",
+            "generated": False,
+            "generated_by": None,
+        }
+        change_records.append(rec)
+
+        if excluded_paths and path_matches(rel_path, excluded_paths):
+            scope_violations.append(f"Excluded path modified: {rel_path}")
+        elif admitted_paths and not path_matches(rel_path, admitted_paths):
+            scope_violations.append(f"Out-of-scope path modified: {rel_path}")
+
+    return {
+        "schema_version": "aif/0.1",
+        "change_count": len(change_records),
+        "scope_status": "SCOPE_VIOLATION" if scope_violations else "WITHIN_SCOPE",
+        "scope_violations": scope_violations,
+        "change_records": change_records,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Compute AIF-0.1 ChangeRecord[] and verify path scope."
+    )
+    parser.add_argument("--repo", type=Path, default=Path("."))
+    parser.add_argument(
+        "--admitted-path",
+        action="append",
+        default=[],
+        help="Glob/path pattern allowed by AdmissionRecord (repeatable).",
+    )
+    parser.add_argument(
+        "--excluded-path",
+        action="append",
+        default=[],
+        help="Glob/path pattern forbidden by AdmissionRecord (repeatable).",
+    )
+    parser.add_argument(
+        "--attribution",
+        default="AGENT_ATTRIBUTED",
+        choices=[
+            "PREEXISTING",
+            "AGENT_ATTRIBUTED",
+            "EXTERNAL_ATTRIBUTED",
+            "GENERATED",
+            "UNATTRIBUTED",
+            "UNKNOWN",
+        ],
+    )
+    parser.add_argument(
+        "--attribution-basis",
+        default="session_tool_invocation_log",
+        help="Provenance basis for attribution (AIF-003A).",
+    )
+    args = parser.parse_args()
+
+    report = audit_changes(
+        args.repo.resolve(),
+        args.admitted_path,
+        args.excluded_path,
+        args.attribution,
+        args.attribution_basis,
+    )
+    print(json.dumps(report, indent=2))
+    return 1 if report["scope_status"] == "SCOPE_VIOLATION" else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

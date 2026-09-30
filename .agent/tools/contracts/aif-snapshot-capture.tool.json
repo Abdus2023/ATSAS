@@ -1,0 +1,23 @@
+{
+  "tool_id": "aif-snapshot-capture",
+  "version": "0.1.0",
+  "description": "Deterministic 5-role repository SnapshotRef capture tool (comparison_base, intake_snapshot, execution_snapshot, verification_snapshot, current_snapshot) enforcing AIF-002 and AIF-002A.",
+  "capability_class": "READ_ONLY",
+  "side_effects": {
+    "mutates_repository": false,
+    "network_access": false,
+    "spawns_persistent_process": false
+  },
+  "required_authority": "READ_WORKSPACE",
+  "observability": {
+    "emits_signals": [
+      "exit_code",
+      "stdout",
+      "structured_metadata"
+    ],
+    "produces_verification_directly": false,
+    "known_blind_spots": [
+      "Observes local git checkout and working tree only; does not query remote git servers over the network"
+    ]
+  }
+}

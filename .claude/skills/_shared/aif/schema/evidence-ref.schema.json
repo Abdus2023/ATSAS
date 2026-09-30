@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/evidence-ref.schema.json",
+  "title": "AIF-0.1 EvidenceRef",
+  "description": "Canonical evidence reference with producer, source_type, subject_snapshot, scope, content_digest, and provenance[] (AIF-007, AIF-016, AIF-018).",
+  "type": "object",
+  "required": [
+    "evidence_id",
+    "producer",
+    "producer_version",
+    "source_type",
+    "source_locator",
+    "captured_at",
+    "subject_snapshot",
+    "scope",
+    "content_digest",
+    "provenance"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "evidence_id": { "type": "string", "minLength": 1 },
+    "producer": { "type": "string", "minLength": 1 },
+    "producer_version": { "type": "string", "minLength": 1 },
+    "source_type": {
+      "enum": [
+        "COMMAND_OUTPUT",
+        "FILE_CONTENT",
+        "GIT_OBJECT",
+        "CI_RUN",
+        "CI_ARTIFACT",
+        "TEST_REPORT",
+        "SCANNER_RESULT",
+        "MANIFEST",
+        "LOCKFILE",
+        "HUMAN_AUTHORIZATION",
+        "SKILL_OUTPUT",
+        "EXTERNAL_RECORD"
+      ]
+    },
+    "source_locator": { "type": "string", "minLength": 1 },
+    "captured_at": { "type": "string", "minLength": 10 },
+    "subject_snapshot": { "type": "string", "minLength": 7 },
+    "scope": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "content_digest": { "type": "string", "minLength": 7 },
+    "provenance": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "claim_scope": { "type": "string", "minLength": 5 },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "snapshot_independent": { "type": "boolean" }
+  }
+}

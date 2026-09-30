@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+"""
+.agent/tools/aif-coverage-eval — Deterministic AIF-0.1 EvidenceCoverage(E, C) Evaluator.
+
+Evaluates whether an EvidenceRef E satisfies a Claim C at a target snapshot, including
+claim-scope-dependent invalidation via Intersects(ChangeRecord, Claim) (AIF-007, AIF-014,
+AIF-014A, AIF-015, AIF-016, AIF-017, AIF-018).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any, Dict, List
+
+
+def intersects_change(change_paths: List[str], claim_subject: str, evidence_scope: List[str]) -> bool:
+    for cp in change_paths:
+        if cp and cp in claim_subject:
+            return True
+        for pat in evidence_scope:
+            if pat == cp:
+                return True
+            if pat.endswith("/**") and cp.startswith(pat[:-3] + "/"):
+                return True
+    return False
+
+
+def evaluate_coverage(
+    evidence: Dict[str, Any],
+    claim: Dict[str, Any],
+    changed_paths: List[str],
+    method_match: bool = True,
+    contradictory: bool = False,
+) -> Dict[str, Any]:
+    ev_id = evidence["evidence_id"]
+    claim_id = claim["claim_id"]
+    ev_snap = evidence["subject_snapshot"]
+    req_snap = claim["required_snapshot"]
+    snap_indep = bool(evidence.get("snapshot_independent", False))
+
+    snapshot_match = (ev_snap == req_snap) or snap_indep
+    if ev_snap == req_snap:
+        freshness = "FRESH"
+    elif snap_indep:
+        freshness = "SNAPSHOT_INDEPENDENT"
+    elif not intersects_change(changed_paths, claim.get("subject", ""), evidence.get("scope", [])):
+        freshness = "NON_INTERSECTING_CHANGE"
+        snapshot_match = True
+    else:
+        freshness = "STALE"
+
+    subject_match = bool(claim.get("subject"))
+    scope_match = len(evidence.get("scope", [])) > 0
+
+    limitations = list(evidence.get("limitations", []))
+    if evidence.get("source_type") == "SKILL_OUTPUT" and not evidence.get("provenance"):
+        # AIF-018: Unprovenanced SKILL_OUTPUT cannot be SUFFICIENT
+        adequacy = "UNKNOWN"
+        limitations.append("unprovenanced_skill_output")
+    elif contradictory:
+        adequacy = "CONTRADICTORY"
+    elif (
+        subject_match
+        and snapshot_match
+        and scope_match
+        and method_match
+        and freshness in ("FRESH", "SNAPSHOT_INDEPENDENT", "NON_INTERSECTING_CHANGE")
+    ):
+        adequacy = "SUFFICIENT"
+    elif subject_match and (scope_match or snapshot_match):
+        adequacy = "PARTIAL"
+    else:
+        adequacy = "IRRELEVANT"
+
+    return {
+        "evidence_id": ev_id,
+        "claim_id": claim_id,
+        "subject_match": subject_match,
+        "snapshot_match": snapshot_match,
+        "scope_match": scope_match,
+        "method_match": method_match,
+        "freshness": freshness,
+        "adequacy": adequacy,
+        "limitations": limitations,
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Evaluate AIF-0.1 EvidenceCoverage(E, C) for an EvidenceRef and Claim."
+    )
+    parser.add_argument("--bundle", type=Path, required=True, help="Path to AIF bundle JSON.")
+    parser.add_argument("--evidence-id", required=True)
+    parser.add_argument("--claim-id", required=True)
+    args = parser.parse_args()
+
+    bundle = json.loads(args.bundle.read_text(encoding="utf-8"))
+    ev_by_id = {e["evidence_id"]: e for e in bundle.get("evidence", [])}
+    cl_by_id = {c["claim_id"]: c for c in bundle.get("claims", [])}
+    changed = [ch["path"] for ch in bundle.get("change_records", [])]
+
+    if args.evidence_id not in ev_by_id:
+        print(f"ERROR: Unknown evidence_id {args.evidence_id}", file=sys.stderr)
+        return 2
+    if args.claim_id not in cl_by_id:
+        print(f"ERROR: Unknown claim_id {args.claim_id}", file=sys.stderr)
+        return 2
+
+    cov = evaluate_coverage(ev_by_id[args.evidence_id], cl_by_id[args.claim_id], changed)
+    print(json.dumps(cov, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

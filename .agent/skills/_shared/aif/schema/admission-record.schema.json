@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/admission-record.schema.json",
+  "title": "AIF-0.1 AdmissionRecord",
+  "description": "Bridges authority and execution. Enforces invariant: EXECUTION cannot legitimately precede ADMISSION (AIF-001).",
+  "type": "object",
+  "required": [
+    "request_id",
+    "admission_status",
+    "admitted_actions",
+    "admitted_paths",
+    "excluded_actions",
+    "excluded_paths",
+    "blockers",
+    "clarifications",
+    "authority_refs",
+    "intake_snapshot"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "request_id": { "type": "string", "minLength": 1 },
+    "admission_status": {
+      "enum": ["ADMITTED", "INSPECT_ONLY", "BLOCKED", "REJECTED"]
+    },
+    "admitted_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "admitted_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "excluded_actions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "excluded_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "clarifications": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "authority_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "intake_snapshot": { "type": "string", "minLength": 7 }
+  }
+}

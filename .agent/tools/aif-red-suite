@@ -1,0 +1,298 @@
+#!/usr/bin/env python3
+"""
+tests/aif-v01-red-suite.py — Phase 0/1 Executable RED & Invariant Test Suite for AIF-0.1.
+
+Verifies:
+  1. All 13 modular schemas in .claude/skills/_shared/aif/schema/ validate their
+     corresponding canonical objects in examples/valid-canonical-data-model.json.
+  2. All 28 executable invariant tests (TEST AIF-001-01 .. TEST AIF-020-01, including
+     sub-invariants AIF-001A .. AIF-014A) defined in .claude/skills/_shared/aif/invariants.md
+     deterministically reject forbidden state transitions and unsupported claims.
+"""
+
+from __future__ import annotations
+
+import copy
+import importlib.machinery
+import importlib.util
+import json
+import sys
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Set, Tuple
+
+
+AGENT_DIR = Path(__file__).resolve().parent.parent
+REPO_ROOT = AGENT_DIR.parent
+SHARED_AIF_DIR = AGENT_DIR / "skills" / "_shared" / "aif"
+SHARED_SCHEMA_DIR = SHARED_AIF_DIR / "schema"
+
+
+def load_aif_verify():
+    aif_verify_path = AGENT_DIR / "tools" / "aif-verify"
+    loader = importlib.machinery.SourceFileLoader("aif_verify", str(aif_verify_path))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def main() -> int:
+    aif_verify = load_aif_verify()
+    base_bundle: Dict[str, Any] = json.loads(
+        (REPO_ROOT / "examples" / "valid-canonical-data-model.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    passed = 0
+    failed = 0
+
+    def ok(msg: str) -> None:
+        nonlocal passed
+        print(f"  [PASS] {msg}")
+        passed += 1
+
+    def err(msg: str) -> None:
+        nonlocal failed
+        print(f"  [FAIL] {msg}", file=sys.stderr)
+        failed += 1
+
+    # 1. Verify .claude/skills/_shared/aif/VERSION == "0.1"
+    version_text = (SHARED_AIF_DIR / "VERSION").read_text(encoding="utf-8").strip()
+    if version_text == "0.1":
+        ok(".claude/skills/_shared/aif/VERSION == 0.1")
+    else:
+        err(f"Expected VERSION '0.1', got {version_text!r}")
+
+    # 2. Validate 14 modular schemas in .claude/skills/_shared/aif/schema/
+    modular_targets: List[Tuple[str, Any]] = [
+        ("snapshot.schema.json", base_bundle["snapshots"][0]),
+        ("snapshot-ref.schema.json", base_bundle["snapshots"][0]),
+        ("authority-event.schema.json", base_bundle["authority_events"][0]),
+        ("request.schema.json", base_bundle["request"]),
+        ("admission.schema.json", base_bundle["admission"]),
+        ("admission-record.schema.json", base_bundle["admission"]),
+        ("execution-record.schema.json", base_bundle["execution_records"][0]),
+        ("change-record.schema.json", base_bundle["change_records"][0]),
+        ("claim.schema.json", base_bundle["claims"][0]),
+        ("evidence-ref.schema.json", base_bundle["evidence"][0]),
+        ("evidence-coverage.schema.json", base_bundle["coverage"][0]),
+        ("verification-record.schema.json", base_bundle["verifications"][0]),
+        ("finding.schema.json", base_bundle["findings"][0]),
+        ("acceptance-expression.schema.json", base_bundle["acceptance_expression"]),
+        ("completion-result.schema.json", base_bundle["completion_result"]),
+        ("evidence-receipt.schema.json", base_bundle),
+    ]
+
+    for schema_filename, sample_obj in modular_targets:
+        schema_path = SHARED_SCHEMA_DIR / schema_filename
+        if not schema_path.is_file():
+            err(f"Missing modular schema: {schema_path}")
+            continue
+        schema_obj = json.loads(schema_path.read_text(encoding="utf-8"))
+        errs = aif_verify.validate_schema(sample_obj, schema_obj, SHARED_SCHEMA_DIR)
+        if not errs:
+            ok(f"Modular schema .claude/skills/_shared/aif/schema/{schema_filename} validates canonical object")
+        else:
+            err(f"Modular schema {schema_filename} failed validation: {errs}")
+
+    # 3. Execute all 28 RED invariant tests (TEST AIF-001-01 .. TEST AIF-020-01)
+    def mut_aif_001(b: Dict[str, Any]) -> None:
+        b["admission"]["admission_status"] = "BLOCKED"
+
+    def mut_aif_001a(b: Dict[str, Any]) -> None:
+        b["execution_records"][0]["started_at"] = "2026-10-01T00:00:00Z"
+        b["execution_records"][0]["ended_at"] = "2026-10-01T00:01:00Z"
+
+    def mut_aif_002(b: Dict[str, Any]) -> None:
+        b["snapshots"] = []
+
+    def mut_aif_002a(b: Dict[str, Any]) -> None:
+        # Clean vs Dirty at same commit claimed as snapshot_match=true
+        b["snapshots"].append(
+            {
+                "snapshot_id": "snap-s2-clean",
+                "role": "verification_snapshot",
+                "repository": "Abdus2023/ATSAS",
+                "ref": "refs/heads/arena/01a0ecca-atsas",
+                "commit": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+                "working_tree_state": "CLEAN",
+                "index_state": "CLEAN",
+                "captured_at": "2026-09-29T12:15:00Z",
+                "content_digest": "sha256:s2-clean",
+                "metadata_digest": "sha256:s2-meta",
+            }
+        )
+        b["evidence"][1]["subject_snapshot"] = "snap-s2-clean"
+
+    def mut_aif_003(b: Dict[str, Any]) -> None:
+        b["change_records"][0]["path"] = "src/unauthorized/secret.ts"
+
+    def mut_aif_003a(b: Dict[str, Any]) -> None:
+        b["change_records"][0]["attribution"] = "AGENT_ATTRIBUTED"
+        b["change_records"][0]["attribution_basis"] = "diff_only"
+
+    def mut_aif_004(b: Dict[str, Any]) -> None:
+        b["execution_records"][0]["execution_state"] = "NOT_STARTED"
+
+    def mut_aif_004a(b: Dict[str, Any]) -> None:
+        b["execution_records"][0]["execution_state"] = "EXECUTED"
+        b["execution_records"][0]["stdout_ref"] = ""
+        b["execution_records"][0]["stderr_ref"] = ""
+        b["execution_records"][0]["process_result"] = "NOT_EXECUTED"
+
+    def mut_aif_005(b: Dict[str, Any]) -> None:
+        b["execution_records"][0]["exit_code"] = 1
+        b["execution_records"][0]["process_result"] = "EXITED_NONZERO"
+        b["execution_records"][0]["test_result"] = "TEST_FAILED"
+
+    def mut_aif_005a(b: Dict[str, Any]) -> None:
+        b["execution_records"][0]["exit_code"] = 0
+        b["execution_records"][0]["test_result"] = "ZERO_TESTS_DISCOVERED"
+
+    def mut_aif_006(b: Dict[str, Any]) -> None:
+        b["execution_records"][0]["semantic_result"] = "IRRELEVANT_TO_CLAIM"
+
+    def mut_aif_006a(b: Dict[str, Any]) -> None:
+        b["verifications"][0]["claim_id"] = "claim-non-existent-999"
+
+    def mut_aif_007(b: Dict[str, Any]) -> None:
+        b["coverage"] = [
+            c for c in b["coverage"] if c["claim_id"] != "claim-test-suite-verified"
+        ]
+
+    def mut_aif_008(b: Dict[str, Any]) -> None:
+        b["verifications"][1]["result"] = "NOT_OBSERVABLE"
+
+    def mut_aif_008a(b: Dict[str, Any]) -> None:
+        b["claims"][1]["status"] = "NOT_OBSERVABLE"
+
+    def mut_aif_009(b: Dict[str, Any]) -> None:
+        b["claims"][0]["status"] = "UNVERIFIED"
+
+    def mut_aif_010(b: Dict[str, Any]) -> None:
+        b["findings"][0]["remediation_authorized"] = True
+
+    def mut_aif_011(b: Dict[str, Any]) -> None:
+        b["coverage"][1]["method_match"] = False
+
+    def mut_aif_012(b: Dict[str, Any]) -> None:
+        b["findings"][0]["category"] = "COMPLETABLE"
+
+    def mut_aif_013(b: Dict[str, Any]) -> None:
+        b["claims"][1]["required_evidence"] = []
+        b["coverage"] = [
+            c for c in b["coverage"] if c["claim_id"] != "claim-test-suite-verified"
+        ]
+
+    def mut_aif_014(b: Dict[str, Any]) -> None:
+        b["evidence"][1]["subject_snapshot"] = "snap-s0-intake"
+        b["coverage"][1]["freshness"] = "FRESH"
+
+    def mut_aif_014a(b: Dict[str, Any]) -> None:
+        b["evidence"][2]["subject_snapshot"] = "snap-s0-intake"
+        b["coverage"][1]["freshness"] = "NON_INTERSECTING_CHANGE"
+        b["claims"][1]["subject"] = ".claude/assurance/canonical-data-model.md"
+
+    def mut_aif_015(b: Dict[str, Any]) -> None:
+        b["coverage"][0]["subject_match"] = False
+
+    def mut_aif_016(b: Dict[str, Any]) -> None:
+        b["evidence"][0]["claim_scope"] = "The repository contains no secrets and dependencies are safe."
+
+    def mut_aif_017(b: Dict[str, Any]) -> None:
+        b["coverage"].append(
+            {
+                "evidence_id": "ev-test-stdout-001",
+                "claim_id": "claim-test-suite-verified",
+                "subject_match": True,
+                "snapshot_match": True,
+                "scope_match": True,
+                "method_match": True,
+                "freshness": "FRESH",
+                "adequacy": "CONTRADICTORY",
+                "limitations": [],
+            }
+        )
+
+    def mut_aif_018(b: Dict[str, Any]) -> None:
+        b["evidence"][1]["source_type"] = "SKILL_OUTPUT"
+        b["evidence"][1]["provenance"] = []
+
+    def mut_aif_019(b: Dict[str, Any]) -> None:
+        b["claims"] = [
+            c for c in b["claims"] if c["claim_id"] != "claim-scope-verified"
+        ]
+
+    def mut_aif_020(b: Dict[str, Any]) -> None:
+        b["claims"][0]["status"] = "CONTRADICTED"
+
+    red_cases: List[Tuple[str, str, Callable[[Dict[str, Any]], None]]] = [
+        ("TEST AIF-001-01", "AIF-001", mut_aif_001),
+        ("TEST AIF-001A-01", "AIF-001A", mut_aif_001a),
+        ("TEST AIF-002-01", "AIF-002", mut_aif_002),
+        ("TEST AIF-002A-01", "AIF-002A", mut_aif_002a),
+        ("TEST AIF-003-01", "AIF-003", mut_aif_003),
+        ("TEST AIF-003A-01", "AIF-003A", mut_aif_003a),
+        ("TEST AIF-004-01", "AIF-004", mut_aif_004),
+        ("TEST AIF-004A-01", "AIF-004A", mut_aif_004a),
+        ("TEST AIF-005-01", "AIF-005", mut_aif_005),
+        ("TEST AIF-005A-01", "AIF-005A", mut_aif_005a),
+        ("TEST AIF-006-01", "AIF-006", mut_aif_006),
+        ("TEST AIF-006A-01", "AIF-006A", mut_aif_006a),
+        ("TEST AIF-007-01", "AIF-007", mut_aif_007),
+        ("TEST AIF-008-01", "AIF-008", mut_aif_008),
+        ("TEST AIF-008A-01", "AIF-008A", mut_aif_008a),
+        ("TEST AIF-009-01", "AIF-009", mut_aif_009),
+        ("TEST AIF-010-01", "AIF-010", mut_aif_010),
+        ("TEST AIF-011-01", "AIF-011", mut_aif_011),
+        ("TEST AIF-012-01", "AIF-012", mut_aif_012),
+        ("TEST AIF-013-01", "AIF-013", mut_aif_013),
+        ("TEST AIF-014-01", "AIF-014", mut_aif_014),
+        ("TEST AIF-014A-01", "AIF-014A", mut_aif_014a),
+        ("TEST AIF-015-01", "AIF-015", mut_aif_015),
+        ("TEST AIF-016-01", "AIF-016", mut_aif_016),
+        ("TEST AIF-017-01", "AIF-017", mut_aif_017),
+        ("TEST AIF-018-01", "AIF-018", mut_aif_018),
+        ("TEST AIF-019-01", "AIF-019", mut_aif_019),
+        ("TEST AIF-020-01", "AIF-020", mut_aif_020),
+    ]
+
+    for test_id, expected_inv, mutator in red_cases:
+        mutated = copy.deepcopy(base_bundle)
+        mutator(mutated)
+        violations = aif_verify.validate_canonical_data_model_bundle(mutated)
+        triggered_ids: Set[str] = {inv for inv, _ in violations}
+        if expected_inv in triggered_ids:
+            ok(f"{test_id} rejected forbidden state with [{expected_inv}]")
+        else:
+            err(
+                f"{test_id} failed to trigger [{expected_inv}] (got {sorted(triggered_ids)}: {violations})"
+            )
+
+    # 4. Execute all 42 RED/Adversarial Corpus Fixtures in _shared/aif/tests/
+    tests_dir = SHARED_AIF_DIR / "tests"
+    fixture_files = sorted(tests_dir.glob("*/*.json"))
+    if len(fixture_files) != 42:
+        err(f"Expected 42 RED/Adversarial test fixtures in {tests_dir}, found {len(fixture_files)}")
+    for fpath in fixture_files:
+        fx = json.loads(fpath.read_text(encoding="utf-8"))
+        tid = fx["test_id"]
+        exp_inv = fx["expected_invariant_violation"]
+        inv_bundle = fx["invalid_bundle"]
+        violations = aif_verify.validate_canonical_data_model_bundle(inv_bundle)
+        triggered_ids = {inv for inv, _ in violations}
+        if exp_inv in triggered_ids:
+            ok(f"Corpus fixture {fpath.parent.name}/{fpath.name} ({tid}) rejected with [{exp_inv}]")
+        else:
+            err(
+                f"Corpus fixture {fpath} ({tid}) failed to trigger [{exp_inv}] (got {sorted(triggered_ids)})"
+            )
+
+    print(f"\nAIF-0.1 RED Suite Summary: {passed} passed, {failed} failed")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

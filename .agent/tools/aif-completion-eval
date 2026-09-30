@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+"""
+.agent/tools/aif-completion-eval — Pure-Function AIF-0.1 Completion Gate Evaluator.
+
+Computes:
+  CompletionResult = Evaluate(AcceptanceExpression, Claims, VerificationRecords, Evidence, Snapshot)
+Enforces AIF-009, AIF-011, AIF-013, AIF-017, AIF-019, and AIF-020.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import importlib.machinery
+import importlib.util
+import json
+import sys
+from pathlib import Path
+from typing import Any, Dict, List
+
+
+AGENT_DIR = Path(__file__).resolve().parent.parent
+
+
+def load_aif_verify():
+    aif_verify_path = AGENT_DIR / "tools" / "aif-verify"
+    loader = importlib.machinery.SourceFileLoader("aif_verify", str(aif_verify_path))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def now_iso() -> str:
+    return (
+        datetime.datetime.now(datetime.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Pure-function AIF-0.1 CompletionResult evaluator over an ArenaEvidenceReceipt/bundle."
+    )
+    parser.add_argument("bundle", type=Path, help="Path to AIF canonical bundle or receipt JSON.")
+    args = parser.parse_args()
+
+    aif_verify = load_aif_verify()
+    data: Dict[str, Any] = json.loads(args.bundle.read_text(encoding="utf-8"))
+
+    claims_by_id = {c["claim_id"]: c for c in data.get("claims", [])}
+    coverages_by_claim_id: Dict[str, List[Dict[str, Any]]] = {}
+    for cov in data.get("coverage", []):
+        coverages_by_claim_id.setdefault(cov["claim_id"], []).append(cov)
+
+    acc_expr = data.get("acceptance_expression", {})
+    eval_outcome = aif_verify.evaluate_acceptance_expression(
+        acc_expr, claims_by_id, coverages_by_claim_id
+    )
+
+    satisfied: List[str] = []
+    unmet: List[str] = []
+    unknowns: List[str] = []
+    blockers: List[str] = list(data.get("admission", {}).get("blockers", []))
+
+    for cid, cl in claims_by_id.items():
+        st = cl.get("status")
+        if st == "VERIFIED":
+            satisfied.append(cid)
+        elif st in ("UNKNOWN", "NOT_OBSERVABLE", "NOT_CHECKED", "NOT_REQUESTED"):
+            unknowns.append(cid)
+        elif st == "CONTRADICTED":
+            blockers.append(f"Contradicted claim: {cid}")
+            unmet.append(cid)
+        else:
+            unmet.append(cid)
+
+    if blockers:
+        status = "BLOCKED"
+    elif eval_outcome in ("SATISFIED", "OPTIONAL_SKIPPED"):
+        status = "COMPLETABLE"
+    elif eval_outcome == "UNKNOWN":
+        status = "UNVERIFIED"
+    else:
+        status = "INCOMPLETE"
+
+    snaps = data.get("snapshots", [])
+    eval_snap = snaps[-1]["snapshot_id"] if snaps else "unknown-snapshot"
+
+    result = {
+        "request_id": data.get("request", {}).get("request_id", "req-unknown"),
+        "acceptance_expression": acc_expr,
+        "status": status,
+        "evaluated_claims": list(claims_by_id.keys()),
+        "satisfied_requirements": satisfied,
+        "unmet_requirements": unmet,
+        "blockers": blockers,
+        "unknowns": unknowns,
+        "evidence_refs": [e["evidence_id"] for e in data.get("evidence", [])],
+        "evaluated_snapshot": eval_snap,
+        "generated_at": now_iso(),
+    }
+    print(json.dumps(result, indent=2))
+    return 0 if status == "COMPLETABLE" else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,57 @@
+producer: test-execution-and-evidence-audit
+version: "0.1.0"
+aif_version: "0.1"
+role: evidence-producer
+
+outputs:
+  evidence: true
+  findings: true
+  verification: limited
+
+produces:
+  - evidence
+  - findings
+  - verification
+
+does_not_produce:
+  - authority
+  - admission
+  - completion
+
+authority: false
+admission: false
+completion: false
+mutation: false
+
+snapshot_binding: required
+execution_binding: required
+
+claim_scope:
+  bounded: true
+  source_type: COMMAND_OUTPUT
+  supported_propositions:
+    - "The executed tests passed under environment E for snapshot S."
+    - "PASS for selected test configuration."
+    - "TYPECHECK_VERIFIED / TEST_SUITE_VERIFIED for snapshot S."
+  forbidden_propositions:
+    - "The implementation is correct."
+    - "100 tests passed (when discovered=100, selected=20, executed=20)."
+    - "All tests passed (without TestExecutionRecord)."
+
+finding_categories:
+  - TESTS_MODIFIED
+  - TEST_CONFIGURATION_MODIFIED
+  - TEST_DISCOVERY_MODIFIED
+  - TEST_ASSERTION_MODIFIED
+  - TEST_DISCOVERY
+  - TEST_EXECUTION
+  - TEST_EVIDENCE
+  - TEST_COVERAGE
+  - TEST_SNAPSHOT_BINDING
+  - TEST_NON_TRANSITIVITY
+  - TEST_OBSERVABILITY
+
+limitations:
+  - enforces PROCESS_SUCCESS != TEST_SUCCESS != TEST_COMPLETENESS != SEMANTIC_CORRECTNESS
+  - enforces AIF-029 (Execution Evidence), AIF-030 (Discovery Completeness), AIF-031 (Test Snapshot Binding), AIF-032 (Test Scope Preservation), AIF-033 (Test Result Non-Transitivity)
+  - requires 9 minimum evidence criteria; if discovery is UNKNOWN, adequacy is PARTIAL (never SUFFICIENT)

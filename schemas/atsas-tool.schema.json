@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/atsas/atsas-tool.schema.json",
+  "title": "ATSAS Tool Contract",
+  "description": "Declarative capability, authority requirement, side-effect profile, and raw observation contract for an ATSAS Tool.",
+  "type": "object",
+  "required": [
+    "tool_id",
+    "version",
+    "description",
+    "capability_class",
+    "side_effects",
+    "required_authority",
+    "observability"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "tool_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "description": "Canonical identifier of the tool."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the tool interface."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capability_class": {
+      "type": "string",
+      "enum": [
+        "READ_ONLY",
+        "WORKSPACE_MUTATION",
+        "PROCESS_EXECUTION",
+        "EXTERNAL_IO",
+        "USER_INTERACTION"
+      ]
+    },
+    "side_effects": {
+      "type": "object",
+      "required": [
+        "mutates_repository",
+        "network_access",
+        "spawns_persistent_process"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mutates_repository": {
+          "type": "boolean",
+          "description": "True if the tool can modify workspace files and advance the repository snapshot."
+        },
+        "network_access": {
+          "type": "boolean"
+        },
+        "spawns_persistent_process": {
+          "type": "boolean"
+        }
+      }
+    },
+    "required_authority": {
+      "type": "string",
+      "enum": [
+        "READ_WORKSPACE",
+        "WRITE_WORKSPACE",
+        "EXECUTE_SANDBOX_COMMAND",
+        "MANAGE_BACKGROUND_PROCESS",
+        "EXTERNAL_NETWORK",
+        "ELEVATED_GOVERNANCE"
+      ]
+    },
+    "observability": {
+      "type": "object",
+      "required": [
+        "emits_signals",
+        "produces_verification_directly"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "emits_signals": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "exit_code",
+              "stdout",
+              "stderr",
+              "file_content",
+              "file_diff",
+              "port_bindings",
+              "structured_metadata"
+            ]
+          },
+          "minItems": 1
+        },
+        "produces_verification_directly": {
+          "type": "boolean",
+          "const": false,
+          "description": "Axiom enforcement: A tool result is a raw observation and is never automatically verification."
+        },
+        "known_blind_spots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

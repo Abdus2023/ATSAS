@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/acceptance-expression.schema.json",
+  "title": "AIF-0.1 AcceptanceExpression",
+  "description": "Algebraic acceptance logic AST over Claim identifiers: ALL, ANY, AT_LEAST_N, OPTIONAL, CONDITIONAL, CLAIM (AIF-009, AIF-011, AIF-020).",
+  "type": "object",
+  "required": ["op"],
+  "additionalProperties": false,
+  "properties": {
+    "op": {
+      "enum": [
+        "ALL",
+        "ANY",
+        "AT_LEAST_N",
+        "OPTIONAL",
+        "CONDITIONAL",
+        "CLAIM",
+        "CRITERION"
+      ]
+    },
+    "claim_id": { "type": "string" },
+    "criterion_id": { "type": "string" },
+    "required_claim_id": { "type": "string" },
+    "mandatory": { "type": "boolean" },
+    "n": { "type": "integer", "minimum": 1 },
+    "expressions": {
+      "type": "array",
+      "items": { "$ref": "acceptance-expression.schema.json" }
+    },
+    "children": {
+      "type": "array",
+      "items": { "$ref": "acceptance-expression.schema.json" }
+    },
+    "expression": {
+      "$ref": "acceptance-expression.schema.json"
+    },
+    "condition": {
+      "$ref": "acceptance-expression.schema.json"
+    },
+    "then": {
+      "$ref": "acceptance-expression.schema.json"
+    },
+    "else": {
+      "$ref": "acceptance-expression.schema.json"
+    }
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "aif_version": "1.0.0",
+  "task_id": "task-2026-002-stale",
+  "task_summary": "Demonstrates STALE evidence violation: workspace modified at snap-003 after test evidence was gathered at snap-002.",
+  "authority_context": {
+    "repository": "Abdus2023/ATSAS",
+    "working_branch": "arena/01a0ecca-atsas",
+    "governance_policy_ref": "examples/governance-policy.json",
+    "invoked_skills": [
+      "skill-tdd-implementation"
+    ],
+    "invoked_tools": [
+      "edit_file",
+      "bash"
+    ]
+  },
+  "initial_snapshot_id": "snap-001",
+  "final_snapshot_id": "snap-003",
+  "snapshots": [
+    {
+      "snapshot_id": "snap-001",
+      "parent_snapshot_id": null,
+      "git_head_sha": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+      "tree_hash": "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4",
+      "timestamp": "2026-09-29T11:00:00Z",
+      "caused_by_execution_id": null,
+      "modified_paths": []
+    },
+    {
+      "snapshot_id": "snap-002",
+      "parent_snapshot_id": "snap-001",
+      "git_head_sha": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+      "tree_hash": "f9e8d7c6b5a4938271605f4e3d2c1b0a9f8e7d6c",
+      "timestamp": "2026-09-29T11:01:00Z",
+      "caused_by_execution_id": "exec-001",
+      "modified_paths": [
+        "src/verifier.py",
+        "tests/test_verifier.py"
+      ]
+    },
+    {
+      "snapshot_id": "snap-003",
+      "parent_snapshot_id": "snap-002",
+      "git_head_sha": "15f7fa01778f06821d1c5c9c285bb0d666e04f8b",
+      "tree_hash": "00112233445566778899aabbccddeeff00112233",
+      "timestamp": "2026-09-29T11:03:00Z",
+      "caused_by_execution_id": "exec-003",
+      "modified_paths": [
+        "src/verifier.py"
+      ]
+    }
+  ],
+  "executions": [
+    {
+      "execution_id": "exec-001",
+      "admission": {
+        "status": "ADMITTED",
+        "authority_scope": "WRITE_WORKSPACE",
+        "policy_ref": "examples/governance-policy.json"
+      },
+      "tool_id": "edit_file",
+      "invocation_summary": "Initial implementation of src/verifier.py",
+      "pre_snapshot_id": "snap-001",
+      "post_snapshot_id": "snap-002",
+      "observation": {
+        "observation_id": "obs-001",
+        "snapshot_id": "snap-002",
+        "observability_status": "FULL",
+        "exit_code": 0,
+        "output_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    {
+      "execution_id": "exec-002",
+      "admission": {
+        "status": "ADMITTED",
+        "authority_scope": "EXECUTE_SANDBOX_COMMAND",
+        "policy_ref": "examples/governance-policy.json"
+      },
+      "tool_id": "bash",
+      "invocation_summary": "pytest tests/test_verifier.py",
+      "pre_snapshot_id": "snap-002",
+      "post_snapshot_id": "snap-002",
+      "observation": {
+        "observation_id": "obs-002",
+        "snapshot_id": "snap-002",
+        "observability_status": "FULL",
+        "exit_code": 0,
+        "output_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      }
+    },
+    {
+      "execution_id": "exec-003",
+      "admission": {
+        "status": "ADMITTED",
+        "authority_scope": "WRITE_WORKSPACE",
+        "policy_ref": "examples/governance-policy.json"
+      },
+      "tool_id": "edit_file",
+      "invocation_summary": "Post-test edit to src/verifier.py without re-running tests",
+      "pre_snapshot_id": "snap-002",
+      "post_snapshot_id": "snap-003",
+      "observation": {
+        "observation_id": "obs-003",
+        "snapshot_id": "snap-003",
+        "observability_status": "FULL",
+        "exit_code": 0,
+        "output_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "evid-001",
+      "artifact_kind": "TEST_SUITE_RESULT",
+      "snapshot_id": "snap-002",
+      "tree_hash": "f9e8d7c6b5a4938271605f4e3d2c1b0a9f8e7d6c",
+      "scope": [
+        "src/verifier.py",
+        "tests/test_verifier.py"
+      ],
+      "execution_id": "exec-002",
+      "observation_id": "obs-002",
+      "predicate_satisfied": true,
+      "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "claim-001",
+      "statement": "src/verifier.py passes all unit tests at the final snapshot.",
+      "scope": [
+        "src/verifier.py",
+        "tests/test_verifier.py"
+      ],
+      "snapshot_id": "snap-003",
+      "status": "VERIFIED",
+      "evidence_ids": [
+        "evid-001"
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion_id": "ac-001",
+      "description": "Verifier passes all unit tests at final repository snapshot.",
+      "mandatory": true,
+      "required_scope": [
+        "src/verifier.py",
+        "tests/test_verifier.py"
+      ],
+      "required_claim_ids": [
+        "claim-001"
+      ],
+      "status": "ACCEPTED"
+    }
+  ],
+  "completion": {
+    "status": "COMPLETE",
+    "final_snapshot_id": "snap-003",
+    "blocking_states": [],
+    "summary": "Invalidly claims COMPLETE despite evid-001 being bound to snap-002 (STALE after exec-003)."
+  }
+}

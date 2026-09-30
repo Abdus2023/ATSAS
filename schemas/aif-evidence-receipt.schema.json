@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif-evidence-receipt.schema.json",
+  "title": "AIF Arena Evidence Receipt (ArenaEvidenceReceipt v0.1)",
+  "description": "Canonical v0.1 ArenaEvidenceReceipt binding three-snapshot provenance (S0=intake_snapshot, S1=execution_snapshot, S2=verification_snapshot, comparison_base, head_commit), request, authority, execution, verification, evidence, findings, and downstream conclusion.",
+  "type": "object",
+  "required": [
+    "receipt_id",
+    "schema_version",
+    "subject",
+    "request",
+    "authority",
+    "execution",
+    "verification",
+    "evidence",
+    "findings",
+    "conclusion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "receipt_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+    },
+    "subject": {
+      "type": "object",
+      "required": [
+        "repository",
+        "branch",
+        "comparison_base",
+        "intake_snapshot",
+        "execution_snapshot",
+        "verification_snapshot",
+        "head_commit"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "branch": { "type": "string", "minLength": 1 },
+        "comparison_base": { "type": "string", "minLength": 7 },
+        "intake_snapshot": { "type": "string", "minLength": 7 },
+        "execution_snapshot": { "type": "string", "minLength": 7 },
+        "verification_snapshot": { "type": "string", "minLength": 7 },
+        "head_commit": { "type": "string", "minLength": 7 }
+      }
+    },
+    "request": {
+      "type": "object",
+      "required": [
+        "request_id",
+        "requested_actions",
+        "acceptance_criteria"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "request_id": { "type": "string", "minLength": 1 },
+        "requested_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "required": [
+        "actor",
+        "authority_basis",
+        "authority_status",
+        "scope"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "actor": { "type": "string", "minLength": 1 },
+        "authority_basis": { "type": "string", "minLength": 1 },
+        "authority_status": {
+          "enum": [
+            "AUTHORIZED",
+            "INSPECT_ONLY",
+            "ADMITTED",
+            "BLOCKED",
+            "REJECTED",
+            "UNAUTHORIZED_EXECUTION"
+          ]
+        },
+        "scope": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "required": [
+        "status",
+        "actions",
+        "commands",
+        "changed_paths"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "NOT_REQUESTED",
+            "AUTHORIZED",
+            "ADMITTED",
+            "STARTED",
+            "EXECUTED",
+            "EXECUTION_FAILED",
+            "CANCELLED"
+          ]
+        },
+        "actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "commands": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "changed_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "checks",
+        "snapshot_binding",
+        "result"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "snapshot_binding": {
+          "enum": [
+            "STABLE_MATCH",
+            "VERIFICATION_STALE",
+            "EVIDENCE_MISMATCH",
+            "UNBOUND"
+          ]
+        },
+        "result": {
+          "enum": [
+            "NOT_VERIFIED",
+            "VERIFIED",
+            "STALE",
+            "MISMATCH",
+            "PARTIAL",
+            "UNVERIFIABLE"
+          ]
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": [
+        "artifacts",
+        "commands",
+        "outputs",
+        "exit_codes",
+        "timestamps",
+        "provenance"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "commands": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "exit_codes": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "timestamps": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "provenance": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "findings": {
+      "type": "object",
+      "required": [
+        "facts",
+        "blockers",
+        "unknowns",
+        "stale_evidence",
+        "mismatches"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "facts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "blockers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "stale_evidence": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "mismatches": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "conclusion": {
+      "type": "object",
+      "required": [
+        "status",
+        "verified_claims",
+        "unverified_claims",
+        "unmet_criteria"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "COMPLETABLE",
+            "INCOMPLETE",
+            "BLOCKED",
+            "REJECTED",
+            "UNVERIFIED"
+          ]
+        },
+        "verified_claims": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "unverified_claims": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "unmet_criteria": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

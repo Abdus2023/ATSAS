@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""
+.agent/tools/aif-exec-record — Deterministic AIF-0.1 ExecutionRecord Wrapper.
+
+Executes a command (or records a dry declaration) and emits a canonical AIF-0.1
+ExecutionRecord JSON object enforcing:
+  - AIF-004 / AIF-004A: Full execution context (command, cwd, env digest, timestamps, snapshots)
+  - AIF-005 / AIF-005A: Separation of PROCESS_RESULT, TEST_RESULT, and SEMANTIC_RESULT
+    (detects vacuous 0-test runs and non-zero exits)
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+
+def now_iso() -> str:
+    return (
+        datetime.datetime.now(datetime.timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def env_digest() -> str:
+    keys = sorted(k for k in os.environ if k in ("PATH", "HOME", "LANG", "PWD", "SHELL"))
+    payload = "\n".join(f"{k}={os.environ.get(k, '')}" for k in keys)
+    return "sha256:" + hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def classify_test_output(exit_code: int, stdout: str, stderr: str, is_test: bool) -> str:
+    if not is_test:
+        return "NOT_A_TEST_RUN"
+    combined = f"{stdout}\n{stderr}".lower()
+    if (
+        "0 passed" in combined
+        or "no tests ran" in combined
+        or "ran 0 tests" in combined
+        or "0 tests discovered" in combined
+    ):
+        return "ZERO_TESTS_DISCOVERED"
+    if exit_code != 0:
+        return "TEST_FAILED"
+    if re.search(r"\b[1-9][0-9]*\s+passed\b", combined) or "status : verified" in combined:
+        return "TEST_PASSED"
+    return "PARTIAL_EXECUTION"
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Execute a command and emit a canonical AIF-0.1 ExecutionRecord."
+    )
+    parser.add_argument("--execution-id", default="exec-001")
+    parser.add_argument("--request-id", default="req-001")
+    parser.add_argument("--actor", default="arena-agent")
+    parser.add_argument("--action", default="VERIFY")
+    parser.add_argument("--subject-snapshot", default="snap-s1-exec")
+    parser.add_argument("--resulting-snapshot", default="snap-s1-exec")
+    parser.add_argument("--is-test", action="store_true", help="Classify output as a test run.")
+    parser.add_argument("--command", required=True, help="Shell command to execute.")
+    parser.add_argument("--cwd", type=Path, default=Path("."))
+    args = parser.parse_args()
+
+    cwd = args.cwd.resolve()
+    started = now_iso()
+    proc = subprocess.run(
+        ["bash", "-c", args.command],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    ended = now_iso()
+
+    stdout_hash = "sha256:" + hashlib.sha256(proc.stdout.encode("utf-8")).hexdigest()[:16]
+    stderr_hash = (
+        "sha256:" + hashlib.sha256(proc.stderr.encode("utf-8")).hexdigest()[:16]
+        if proc.stderr
+        else ""
+    )
+
+    process_result = "EXITED_ZERO" if proc.returncode == 0 else "EXITED_NONZERO"
+    test_result = classify_test_output(
+        proc.returncode, proc.stdout, proc.stderr, args.is_test
+    )
+    if proc.returncode != 0:
+        semantic_result = "CONTRADICTS_CLAIM"
+    elif args.is_test and test_result != "TEST_PASSED":
+        semantic_result = "INSUFFICIENT_FOR_CLAIM"
+    else:
+        semantic_result = "SUFFICIENT_FOR_CLAIM"
+
+    record = {
+        "execution_id": args.execution_id,
+        "request_id": args.request_id,
+        "actor": args.actor,
+        "action": args.action,
+        "command": args.command,
+        "working_directory": str(cwd),
+        "environment_digest": env_digest(),
+        "tool": "bash",
+        "tool_version": "5.2",
+        "started_at": started,
+        "ended_at": ended,
+        "execution_state": "EXECUTED" if proc.returncode == 0 else "FAILED",
+        "exit_code": proc.returncode,
+        "stdout_ref": stdout_hash,
+        "stderr_ref": stderr_hash,
+        "subject_snapshot": args.subject_snapshot,
+        "resulting_snapshot": args.resulting_snapshot,
+        "process_result": process_result,
+        "test_result": test_result,
+        "semantic_result": semantic_result,
+    }
+    print(json.dumps(record, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

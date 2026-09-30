@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arena.ai/schemas/aif/v0.1/verification-record.schema.json",
+  "title": "AIF-0.1 VerificationRecord",
+  "description": "Claim-relative verification outcome binding claim_id, method, subject_snapshot, evidence_refs[], and coverage[] (AIF-006, AIF-006A).",
+  "type": "object",
+  "required": [
+    "verification_id",
+    "claim_id",
+    "method",
+    "subject_snapshot",
+    "evidence_refs",
+    "coverage",
+    "result",
+    "verified_at",
+    "verifier"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "verification_id": { "type": "string", "minLength": 1 },
+    "claim_id": { "type": "string", "minLength": 1 },
+    "method": { "type": "string", "minLength": 1 },
+    "subject_snapshot": { "type": "string", "minLength": 7 },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "coverage": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "result": {
+      "enum": [
+        "VERIFIED",
+        "PARTIAL",
+        "UNVERIFIED",
+        "CONTRADICTED",
+        "STALE",
+        "MISMATCH",
+        "NOT_OBSERVABLE"
+      ]
+    },
+    "verified_at": { "type": "string", "minLength": 10 },
+    "verifier": { "type": "string", "minLength": 1 }
+  }
+}

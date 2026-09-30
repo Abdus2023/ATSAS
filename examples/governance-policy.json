@@ -1,0 +1,25 @@
+{
+  "governance_version": "1.0.0",
+  "repository": "Abdus2023/ATSAS",
+  "authority_policy": {
+    "enforce_session_branch": true,
+    "allowed_branch_pattern": "^arena/.*$",
+    "forbid_git_root_deletion": true,
+    "require_admission_for_mutations": true
+  },
+  "protected_paths": [
+    ".git",
+    "schemas/aif-completion-manifest.schema.json"
+  ],
+  "mandatory_acceptance_gates": [
+    {
+      "gate_id": "gate-schema-validity",
+      "description": "All JSON schemas and example manifests must parse and validate against their contracts.",
+      "applies_to_scope": [
+        "schemas/",
+        "examples/"
+      ],
+      "required_verification": "Run ./bin/aif-verify and ./tests/run-tests.sh at the final repository snapshot."
+    }
+  ]
+}

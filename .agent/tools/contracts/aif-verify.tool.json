@@ -1,0 +1,24 @@
+{
+  "tool_id": "aif-verify",
+  "version": "0.1.0",
+  "description": "Zero-dependency CLI validator for ATSAS contracts, AIF-0.1 Semantic Kernel schemas, AcceptanceExpression evaluation, and invariants AIF-001..AIF-020 (+A).",
+  "capability_class": "READ_ONLY",
+  "side_effects": {
+    "mutates_repository": false,
+    "network_access": false,
+    "spawns_persistent_process": false
+  },
+  "required_authority": "READ_WORKSPACE",
+  "observability": {
+    "emits_signals": [
+      "exit_code",
+      "stdout",
+      "stderr",
+      "structured_metadata"
+    ],
+    "produces_verification_directly": false,
+    "known_blind_spots": [
+      "Validates JSON artifacts against schemas and invariants; does not execute external repository test suites by itself"
+    ]
+  }
+}
