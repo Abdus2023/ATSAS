@@ -46,10 +46,10 @@ Per `AIF-002` (Snapshot State Distinction: `HEAD commit ≠ Staged index ≠ Wor
 
 | Dimension | Observed State | Evidence |
 |---|---|---|
-| **Branch** | `arena/01a0ecca-atsas` | `git status -sb` |
-| **`HEAD` Commit** | `15f7fa01778f06821d1c5c9c285bb0d666e04f8b` (`Initial commit`) | `git log -n 1 --oneline` |
-| **Committed Tree at `HEAD`** | `README.md` (initial placeholder) | `git ls-tree HEAD` |
-| **Working Tree State** | `DIRTY` (`M README.md` + untracked implementation directories `.claude/`, `bin/`, `schemas/`, `spec/`, `examples/`, `tests/`, `.agent/`) | `git status --short` |
+| **Branch** | `arena/01a0ecca-atsas` (tracking `origin/arena/01a0ecca-atsas`) | `git status -sb` |
+| **Base Commit (`S0`)** | `15f7fa01778f06821d1c5c9c285bb0d666e04f8b` (`Initial commit`) | `git log --oneline` |
+| **Implementation Commit (`S1`)** | `ea23125` (`feat(atsas): implement AIF-0.1.0 kernel, 22-skill inventory (C-01..C-08), evaluation harness, and Phase 12 interface freeze`) | `git log -n 2 --oneline` |
+| **Working Tree State** | `CLEAN` (all `289` repository artifacts tracked and pushed to `origin/arena/01a0ecca-atsas`) | `git status --short` |
 | **`.claude/skills/_shared/aif/` Kernel** | `PRESENT` & `VERIFIED` (`VERSION = 0.1.0`, 7 docs, 13 JSON schemas, 3 test files, 7 producer contracts, 0 executable files inside `_shared/aif/`) | `python3 tests/aif-v01-red-suite.py` (`145/145 PASS`) |
 | **`.claude/skills/` Inventory (`11.24`)** | All `22` skills present (`14` imported StreamForge skills + `8` Wave-1 AIF skills `C-01`..`C-08`), all declaring explicit `SCOPE:` | `validate_skill.py --all .claude/skills` (`22/22 PASS`) |
 | **Wave-1 Skill Self-Tests (`C-01`..`C-08`)** | `C-01` (`14/14`), `C-02` (`9/9`), `C-03` (`16/16`), `C-04` (`21/21`), `C-05` (`27/27`), `C-06` (`19/19`), `C-07` (`22/22`), `C-08` (`13/13`) | `./tests/run-tests.sh` |
