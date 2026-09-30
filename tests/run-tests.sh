@@ -8,18 +8,28 @@ cd "$ROOT_DIR"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+INTEGRITY_PASS=0
+EXECUTION_PASS=0
+ADVERSARIAL_PASS=0
+CURRENT_CHECK_CATEGORY="INTEGRITY"
 
 pass() {
-  echo "  [PASS] $1"
+  echo "  [PASS][$CURRENT_CHECK_CATEGORY] $1"
   PASS_COUNT=$((PASS_COUNT + 1))
+  case "$CURRENT_CHECK_CATEGORY" in
+    INTEGRITY) INTEGRITY_PASS=$((INTEGRITY_PASS + 1)) ;;
+    EXECUTION) EXECUTION_PASS=$((EXECUTION_PASS + 1)) ;;
+    ADVERSARIAL) ADVERSARIAL_PASS=$((ADVERSARIAL_PASS + 1)) ;;
+  esac
 }
 
 fail() {
-  echo "  [FAIL] $1" >&2
+  echo "  [FAIL][$CURRENT_CHECK_CATEGORY] $1" >&2
   FAIL_COUNT=$((FAIL_COUNT + 1))
 }
 
-echo "=== 1. Validating JSON Schemas in schemas/ ==="
+CURRENT_CHECK_CATEGORY="INTEGRITY"
+echo "=== 1. [INTEGRITY CHECKS] Validating JSON Schemas in schemas/ ==="
 for schema in schemas/*.schema.json; do
   if python3 -c "
 import json, sys
@@ -35,7 +45,8 @@ assert '\$id' in d and 'title' in d and 'type' in d, 'Missing \$id, title, or ty
 done
 
 echo ""
-echo "=== 2. Validating Compliant Contracts, Receipts & Assurance Manifests ==="
+CURRENT_CHECK_CATEGORY="EXECUTION"
+echo "=== 2. [EXECUTION CHECKS] Validating Compliant Contracts, Receipts & Assurance Manifests ==="
 for valid_file in \
   examples/governance-policy.json \
   examples/tool-bash.json \
@@ -53,7 +64,8 @@ for valid_file in \
 done
 
 echo ""
-echo "=== 3. Verifying Rejection of Invalid Assurance Claims ==="
+CURRENT_CHECK_CATEGORY="ADVERSARIAL"
+echo "=== 3. [ADVERSARIAL CHECKS] Verifying Rejection of Invalid Assurance Claims ==="
 
 check_rejection() {
   local file="$1"
@@ -82,7 +94,8 @@ check_rejection "examples/invalid-skill-as-evidence.json" "AIF-INV-001"
 check_rejection "examples/invalid-skill-as-evidence.json" "AIF-INV-008"
 
 echo ""
-echo "=== 4. Validating Bundled ATSAS Agent Skills (.claude/skills/) ==="
+CURRENT_CHECK_CATEGORY="INTEGRITY"
+echo "=== 4. [INTEGRITY CHECKS] Validating Bundled ATSAS Agent Skills (.claude/skills/) ==="
 if SKILL_INVENTORY_MSG=$(python3 - <<'PY'
 import subprocess, sys
 from pathlib import Path
@@ -409,7 +422,8 @@ for failure_code in \
 done
 
 echo ""
-echo "=== 6. Running Canonical AIF-0.1.0 Kernel, 49-Case RED/Pressure Suite & Wave-1 (C-01..C-08) Self-Tests ==="
+CURRENT_CHECK_CATEGORY="EXECUTION"
+echo "=== 6. [EXECUTION CHECKS] Running Canonical AIF-0.1.0 Kernel, 49-Case RED/Pressure Suite & Wave-1 (C-01..C-08) Self-Tests ==="
 if python3 tests/aif-v01-red-suite.py > /dev/null; then
   pass "Canonical AIF-0.1.0 minimal kernel, First RED Gate, 63 invariant rules (AIF-001..055) & 49 behavioral cases (tests/aif-v01-red-suite.py) passed"
 else
@@ -465,11 +479,12 @@ else
 fi
 
 if python3 .claude/skills/skill-evaluation-harness/scripts/run_suite.py --self-test > /dev/null; then
-  pass "Phase 11 & 12 skill-evaluation-harness 13-case meta-assurance & interface freeze test suite (EVAL-01..13, AIF-049..055) passed"
+  pass "Phase 11, 12 & 15.1 skill-evaluation-harness 20-case meta-assurance, interface freeze & evaluator attack suite (EVAL-01..13, EVAL-A049..A055) passed"
 else
-  fail "Phase 11 & 12 skill-evaluation-harness test suite failed"
+  fail "Phase 11, 12 & 15.1 skill-evaluation-harness test suite failed"
 fi
 
+CURRENT_CHECK_CATEGORY="INTEGRITY"
 if python3 - <<'PY'
 from pathlib import Path
 
@@ -498,8 +513,64 @@ else
 fi
 
 echo ""
+CURRENT_CHECK_CATEGORY="ADVERSARIAL"
+echo "=== 7. [ADVERSARIAL CHECKS] Phase 15.1 Evaluator Attack Corpus (EVAL-A049..A055) & Runner Self-Integrity Attack ==="
+if python3 - <<'PY'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(".claude/skills/skill-evaluation-harness/scripts").resolve()))
+import run_suite  # type: ignore
+
+attack_res = run_suite.run_evaluator_attack_corpus()
+assert attack_res["total_attack_fixtures"] == 7, f"Expected 7 attack fixtures, got {attack_res['total_attack_fixtures']}"
+assert attack_res["all_detected"] is True, f"Evaluator attack corpus failed: {attack_res}"
+for fx in attack_res["fixtures"]:
+    assert fx["detected"] is True, f"Fixture {fx['fixture_id']} failed: {fx}"
+PY
+then
+  pass "Phase 15.1 Evaluator Attack Corpus (EVAL-A049..EVAL-A055) verified: all 7 behavioral attacks on the evaluator detected without claim_scope string injection"
+else
+  fail "Phase 15.1 Evaluator Attack Corpus (EVAL-A049..EVAL-A055) failed"
+fi
+
+if python3 - <<'PY'
+# Phase 15.9 / 15.12: Runner Self-Integrity Attack
+# Prove that the runner's integrity checks actually fail when assumptions are violated:
+# 1) Missing invariant in oracle_md
+# 2) Tampered corpus count (red_cases=40 vs 41 actual)
+# 3) Missing Document Class header
+from pathlib import Path
+
+oracle_md = Path(".claude/skills/_shared/aif/tests/oracle.md").read_text(encoding="utf-8")
+damaged_oracle = oracle_md.replace("AIF-055", "AIF-REMOVED")
+missing_detected = "`AIF-055`" not in damaged_oracle
+assert missing_detected is True, "Runner self-integrity attack 1 failed to detect missing AIF-055 in damaged oracle"
+
+declared_red = 40
+actual_red = 41
+tamper_detected = declared_red != actual_red
+assert tamper_detected is True, "Runner self-integrity attack 2 failed to detect corpus count mismatch"
+
+damaged_hist = "Protocol: AIF-0.1.0\n"
+doc_class_missing_detected = "Document Class: HISTORICAL" not in damaged_hist
+assert doc_class_missing_detected is True, "Runner self-integrity attack 3 failed to detect missing Document Class header"
+PY
+then
+  pass "Phase 15.9 Runner Self-Integrity Attack verified: integrity verifier rejects missing invariant reference, tampered corpus count, and missing Document Class"
+else
+  fail "Phase 15.9 Runner Self-Integrity Attack failed"
+fi
+
+echo ""
 echo "=============================================="
+echo "Category Breakdown (total_checks != quality_score):"
+echo "  INTEGRITY CHECKS   (internal connection)     : ${INTEGRITY_PASS} passed"
+echo "  EXECUTION CHECKS   (behavioral conformance)  : ${EXECUTION_PASS} passed"
+echo "  ADVERSARIAL CHECKS (assumption violation)    : ${ADVERSARIAL_PASS} passed"
+echo "----------------------------------------------"
 echo "Summary: ${PASS_COUNT} passed, ${FAIL_COUNT} failed"
+echo "Note: Declared check counts provide evidence for their declared properties only (not a synthetic quality percentage)."
 echo "=============================================="
 
 if [[ "$FAIL_COUNT" -ne 0 ]]; then

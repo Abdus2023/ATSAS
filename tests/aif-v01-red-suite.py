@@ -483,70 +483,145 @@ def main() -> int:
         b["execution_records"][0]["test_result"] = "TEST_PASSED"
 
     def mut_aif_034(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "declared implies resolved for package.json"
+        b["supply_chain_state"] = {
+            "declared": True,
+            "lockfile_present": False,
+            "resolution_status": "RESOLVED",
+        }
 
     def mut_aif_035(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "resolved implies installed for package-lock.json"
+        b["supply_chain_state"] = {
+            "resolution_status": "RESOLVED",
+            "install_tree_observed": False,
+            "installation_status": "INSTALLED",
+        }
 
     def mut_aif_036(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "installed implies used_in_build for node_modules"
+        b["supply_chain_state"] = {
+            "installation_status": "INSTALLED",
+            "build_trace_observed": False,
+            "build_usage_status": "USED_IN_BUILD",
+        }
 
     def mut_aif_037(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "artifact exists implies proven_build_origin for dist/app.js"
+        b["supply_chain_state"] = {
+            "artifact_present": True,
+            "build_provenance_verified": False,
+            "artifact_origin": "PROVEN_BUILD_ORIGIN",
+        }
 
     def mut_aif_038(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "vulnerability audit clean implies supply_chain_established"
+        b["supply_chain_state"] = {
+            "known_vulnerabilities": 0,
+            "provenance_verified": False,
+            "supply_chain_status": "ESTABLISHED",
+        }
 
     def mut_aif_039(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "unobservable stage inferred as registry"
+        b["supply_chain_state"] = {
+            "stage_observable": False,
+            "stage_classification": "REGISTRY_VERIFIED",
+        }
 
     def mut_aif_040(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "stale resolution certifies build at S2"
+        b["supply_chain_state"] = {
+            "resolution_snapshot": "S1",
+            "target_snapshot": "S2",
+            "freshness": "FRESH",
+        }
 
     def mut_aif_041(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "mutated receipt in place after repository change"
+        b["receipt_state"] = {
+            "mutated_in_place": True,
+            "supersedes_receipt_id": "sha256:r1",
+            "previous_receipt_id": None,
+        }
 
     def mut_aif_042(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "nondeterministic receipt digest"
+        b["receipt_state"] = {
+            "declared_receipt_id": "sha256:0000000000000000",
+            "computed_jcs_sha256": "sha256:ffffffffffffffff",
+        }
 
     def mut_aif_043(b: Dict[str, Any]) -> None:
         b["evidence"][1]["source_locator"] = ""
+        b["receipt_state"] = {"dangling_evidence_refs": ["ev-missing-999"]}
 
     def mut_aif_044(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "valid receipt implies verified claims"
+        b["receipt_state"] = {
+            "structurally_valid": True,
+            "unverified_claims_count": 2,
+            "all_claims_verified": True,
+        }
 
     def mut_aif_045(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "no secrets exist in the repository"
+        b["receipt_state"] = {"normalized_scope_exceeds_source": True}
 
     def mut_aif_046(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "discarded contradictory evidence"
+        b["receipt_state"] = {
+            "contradictory_evidence_count": 2,
+            "retained_evidence_count": 1,
+            "verification_status": "VERIFIED",
+        }
 
     def mut_aif_047(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "rebound old evidence to latest snapshot"
+        b["receipt_state"] = {
+            "evidence_capture_snapshot": "S1",
+            "recorded_evidence_snapshot": "S3",
+        }
 
     def mut_aif_048(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "receipt generator declares completion"
+        b["receipt_state"] = {
+            "producer": "evidence-receipt-generator",
+            "emits_completion_verdict": True,
+        }
 
     def mut_aif_049(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "eval case passed without execution observation"
+        b["evaluation_harness_state"] = {
+            "case_status": "PASS",
+            "execution_occurred": True,
+            "observation_produced": False,
+        }
 
     def mut_aif_050(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "oracle derived expected truth from skill output"
+        b["evaluation_harness_state"] = {
+            "oracle_expected_source": "SKILL_OUTPUT",
+            "oracle_circular_binding": True,
+        }
 
     def mut_aif_051(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "eval baseline unbound from corpus digest"
+        b["evaluation_harness_state"] = {
+            "declared_corpus_digest": "sha256:1111111111111111",
+            "actual_corpus_digest": "sha256:2222222222222222",
+            "declared_total_cases": 48,
+            "actual_total_cases": 49,
+        }
 
     def mut_aif_052(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "nondeterministic regression evaluation"
+        b["evaluation_harness_state"] = {
+            "replay_run_1_digest": "sha256:aaaa",
+            "replay_run_2_digest": "sha256:bbbb",
+        }
 
     def mut_aif_053(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "mutation undetected by critical invariant suite"
+        b["evaluation_harness_state"] = {
+            "critical_mutation_applied": True,
+            "mutation_class": "CRITICAL_MUTATION",
+            "post_mutation_failed_cases": 0,
+        }
 
     def mut_aif_054(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "trigger evaluation conflates should_trigger with should_not_trigger"
+        b["evaluation_harness_state"] = {
+            "trigger_false_positives": 2,
+            "trigger_false_negatives": 1,
+        }
 
     def mut_aif_055(b: Dict[str, Any]) -> None:
-        b["evidence"][1]["claim_scope"] = "vacuous test passed without exercising behavior"
+        b["evaluation_harness_state"] = {
+            "case_status": "PASS",
+            "execution_occurred": False,
+            "execution_count": 0,
+        }
 
     red_cases: List[Tuple[str, str, Callable[[Dict[str, Any]], None]]] = [
         ("TEST AIF-001-01", "AIF-001", mut_aif_001),
@@ -893,6 +968,28 @@ def main() -> int:
             ok(f"Phase 5 Adapter test {adp_label}")
         else:
             err(f"Phase 5 Adapter test failed: {adp_label}")
+
+    # 5C. Phase 15.1 — Seven Executable Adversarial Evaluator Attack Fixtures (EVAL-A049 .. EVAL-A055)
+    harness_scripts = REPO_ROOT / ".claude" / "skills" / "skill-evaluation-harness" / "scripts"
+    if str(harness_scripts) not in sys.path:
+        sys.path.insert(0, str(harness_scripts))
+    import run_suite as harness_run_suite  # type: ignore
+
+    attack_report = harness_run_suite.run_evaluator_attack_corpus()
+    # Also test live YAML corpus-count tamper detection on cases.yaml (EVAL-A051)
+    tampered_doc = copy.deepcopy(corpus_doc)
+    tampered_doc["corpus"]["red_cases"] = 40
+    yaml_tamper_caught = tampered_doc["corpus"]["red_cases"] != actual_red
+
+    for fx in attack_report["fixtures"]:
+        fid = fx["fixture_id"]
+        inv = fx["invariant_id"]
+        atk = fx["attack"]
+        extra_ok = yaml_tamper_caught if fid == "EVAL-A051" else True
+        if fx["detected"] and extra_ok:
+            ok(f"Phase 15.1 Evaluator Attack {fid} ({inv} [{atk}]): behavioral failure detected without claim_scope string injection")
+        else:
+            err(f"Phase 15.1 Evaluator Attack {fid} ({inv} [{atk}]) failed: {fx}")
 
     # 6. Anti-Gaming Integrity Check
     post_eval_digest = compute_evaluator_and_corpus_digest()

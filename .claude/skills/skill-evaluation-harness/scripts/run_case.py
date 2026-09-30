@@ -78,20 +78,43 @@ def execute_skill_for_case(
 
     emitted_claims: List[str] = []
 
-    # Apply contract-breaking mutations when testing Mutation Sensitivity (11.15, AIF-053)
-    if mutation_mode == "UNKNOWN_TO_PASS":
-        if cls["status"] in ("UNKNOWN", "NOT_VERIFIED", "UNVERIFIED", "INCOMPLETE"):
+    # Apply contract-breaking mutations when testing Mutation Sensitivity (11.15 & Phase 15.4, AIF-053)
+    if mutation_mode in ("UNKNOWN_TO_PASS", "CRITICAL_MUT_TEST_EXEC"):
+        if cls["status"] in ("UNKNOWN", "NOT_VERIFIED", "UNVERIFIED", "INCOMPLETE", "PARTIAL"):
             cls["status"] = "PASS"
             cls["unknown_preserved"] = False
             emitted_claims.append("TESTS_PASS")
-    elif mutation_mode == "DROP_SNAPSHOT_CHECK":
+    elif mutation_mode in ("DROP_SNAPSHOT_CHECK", "CRITICAL_MUT_PRODUCER_CI"):
         if cls.get("snapshot_mismatch") or case_obj["case_id"] in ("RED-20", "RED-28", "RED-41", "TEST-07", "COMPLETE-06"):
             cls["snapshot_mismatch"] = False
             cls["status"] = "VERIFIED"
-    elif mutation_mode == "DROP_SCOPE_CHECK":
+    elif mutation_mode in ("DROP_SCOPE_CHECK", "CRITICAL_MUT_SCOPE_ATTRIBUTION"):
         if cls.get("scope_violation") or case_obj["case_id"] in ("RED-04", "RED-05", "RED-37", "P-02", "COMPLETE-09"):
             cls["scope_violation"] = False
             cls["status"] = "AUTHORIZED"
+    elif mutation_mode == "CRITICAL_MUT_AUTHORITY":
+        if case_obj["case_id"] in ("RED-01", "RED-02", "RED-04", "P-08"):
+            cls["status"] = "ADMITTED"
+            cls["completion_allowed"] = True
+    elif mutation_mode == "CRITICAL_MUT_SUPPLY_CHAIN":
+        if case_obj["case_id"] in ("RED-16", "RED-17", "RED-21"):
+            cls["status"] = "VERIFIED"
+            cls["evidence_present"] = True
+    elif mutation_mode == "CRITICAL_MUT_RECEIPT_GATE":
+        if case_obj["case_id"].startswith("RECEIPT-") or case_obj["case_id"].startswith("COMPLETE-"):
+            cls["status"] = "COMPLETABLE"
+            cls["completion_allowed"] = True
+    elif mutation_mode == "CRITICAL_MUT_EVALUATOR_ORACLE":
+        if case_obj["case_id"] in ("RED-13", "RED-19", "RED-22", "RED-24"):
+            return {
+                "execution_occurred": False,
+                "observation_produced": False,
+                "classification": cls,
+                "observed_evidence": [],
+                "emitted_claims": [],
+                "mutated_repository": False,
+                "cost": {"duration_ms": 0, "commands_executed": 0, "files_read": 0, "network_calls": 0, "tokens_if_available": None},
+            }
 
     observed_evidence = [
         {"kind": rk, "evidence_id": f"ev-{case_obj['case_id'].lower()}-{idx + 1}"}

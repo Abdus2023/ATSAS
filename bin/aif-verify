@@ -712,6 +712,64 @@ def validate_canonical_data_model_bundle(
         if "vacuous test passed without exercising behavior" in c_scope:
             violations.append(("AIF-055", f"EvidenceRef '{ev['evidence_id']}' violates Test Non-Vacuity."))
 
+    # Structured behavioral checks for Supply Chain (AIF-034..040), Receipts (AIF-041..048),
+    # and Skill Evaluation Harness (AIF-049..055) — independent of claim_scope string markers
+    sc_state = bundle.get("supply_chain_state")
+    if isinstance(sc_state, dict):
+        if sc_state.get("declared") is True and sc_state.get("lockfile_present") is False and sc_state.get("resolution_status") == "RESOLVED":
+            violations.append(("AIF-034", "supply_chain_state marks resolution_status='RESOLVED' from manifest declaration alone without lockfile."))
+        if sc_state.get("resolution_status") == "RESOLVED" and sc_state.get("install_tree_observed") is False and sc_state.get("installation_status") == "INSTALLED":
+            violations.append(("AIF-035", "supply_chain_state marks installation_status='INSTALLED' from lockfile resolution without observed install tree."))
+        if sc_state.get("installation_status") == "INSTALLED" and sc_state.get("build_trace_observed") is False and sc_state.get("build_usage_status") == "USED_IN_BUILD":
+            violations.append(("AIF-036", "supply_chain_state marks build_usage_status='USED_IN_BUILD' from installation state without build trace."))
+        if sc_state.get("artifact_present") is True and sc_state.get("build_provenance_verified") is False and sc_state.get("artifact_origin") == "PROVEN_BUILD_ORIGIN":
+            violations.append(("AIF-037", "supply_chain_state claims PROVEN_BUILD_ORIGIN from artifact presence without verified build provenance."))
+        if sc_state.get("known_vulnerabilities") == 0 and sc_state.get("provenance_verified") is False and sc_state.get("supply_chain_status") == "ESTABLISHED":
+            violations.append(("AIF-038", "supply_chain_state claims supply_chain_status='ESTABLISHED' from 0 known vulnerabilities alone."))
+        if sc_state.get("stage_observable") is False and sc_state.get("stage_classification") not in ("UNKNOWN", "NOT_OBSERVABLE"):
+            violations.append(("AIF-039", f"supply_chain_state classifies unobservable stage as '{sc_state.get('stage_classification')}' instead of UNKNOWN/NOT_OBSERVABLE."))
+        if sc_state.get("resolution_snapshot") and sc_state.get("target_snapshot") and sc_state.get("resolution_snapshot") != sc_state.get("target_snapshot") and sc_state.get("freshness") == "FRESH":
+            violations.append(("AIF-040", f"supply_chain_state claims FRESH when resolution_snapshot ('{sc_state.get('resolution_snapshot')}') != target_snapshot ('{sc_state.get('target_snapshot')}')."))
+
+    rec_state = bundle.get("receipt_state")
+    if isinstance(rec_state, dict):
+        if rec_state.get("mutated_in_place") is True or (rec_state.get("supersedes_receipt_id") and not rec_state.get("previous_receipt_id")):
+            violations.append(("AIF-041", "receipt_state mutates published receipt in place or omits previous_receipt_id."))
+        if rec_state.get("declared_receipt_id") and rec_state.get("computed_jcs_sha256") and rec_state.get("declared_receipt_id") != rec_state.get("computed_jcs_sha256"):
+            violations.append(("AIF-042", "receipt_state declared_receipt_id mismatches RFC 8785 JCS SHA-256 digest."))
+        if rec_state.get("dangling_evidence_refs"):
+            violations.append(("AIF-043", f"receipt_state contains dangling evidence references: {rec_state.get('dangling_evidence_refs')}."))
+        if rec_state.get("structurally_valid") is True and rec_state.get("unverified_claims_count", 0) > 0 and rec_state.get("all_claims_verified") is True:
+            violations.append(("AIF-044", "receipt_state equates structural receipt validity with all_claims_verified=true."))
+        if rec_state.get("normalized_scope_exceeds_source") is True:
+            violations.append(("AIF-045", "receipt_state normalized claim scope exceeds source EvidenceRef scope."))
+        if rec_state.get("contradictory_evidence_count", 0) > 1 and (rec_state.get("retained_evidence_count", 0) < rec_state.get("contradictory_evidence_count", 0) or rec_state.get("verification_status") != "CONTRADICTED"):
+            violations.append(("AIF-046", "receipt_state drops contradictory evidence or fails to classify status as CONTRADICTED."))
+        if rec_state.get("evidence_capture_snapshot") and rec_state.get("recorded_evidence_snapshot") and rec_state.get("evidence_capture_snapshot") != rec_state.get("recorded_evidence_snapshot"):
+            violations.append(("AIF-047", "receipt_state overwrites historical evidence_capture_snapshot with newer snapshot."))
+        if rec_state.get("producer") == "evidence-receipt-generator" and (rec_state.get("emits_completion_verdict") is True or rec_state.get("emits_authority_grant") is True):
+            violations.append(("AIF-048", "receipt_state allows evidence-receipt-generator to emit completion or authority decision."))
+
+    eval_state = bundle.get("evaluation_harness_state")
+    if isinstance(eval_state, dict):
+        if eval_state.get("case_status") == "PASS" and not eval_state.get("observation_produced", True):
+            violations.append(("AIF-049", "evaluation_harness_state marks case_status='PASS' while observation_produced=false."))
+        if eval_state.get("oracle_expected_source") == "SKILL_OUTPUT" or eval_state.get("oracle_circular_binding") is True:
+            violations.append(("AIF-050", "evaluation_harness_state derives oracle expected truth from skill output (circular oracle)."))
+        if (
+            (eval_state.get("declared_corpus_digest") and eval_state.get("actual_corpus_digest") and eval_state.get("declared_corpus_digest") != eval_state.get("actual_corpus_digest"))
+            or (eval_state.get("declared_total_cases") is not None and eval_state.get("actual_total_cases") is not None and eval_state.get("declared_total_cases") != eval_state.get("actual_total_cases"))
+        ):
+            violations.append(("AIF-051", "evaluation_harness_state corpus digest or case count mismatches actual corpus (CORPUS_INTEGRITY_ERROR)."))
+        if eval_state.get("replay_run_1_digest") and eval_state.get("replay_run_2_digest") and eval_state.get("replay_run_1_digest") != eval_state.get("replay_run_2_digest"):
+            violations.append(("AIF-052", "evaluation_harness_state replay digests differ across identical inputs (NON_REPRODUCIBLE)."))
+        if eval_state.get("critical_mutation_applied") is True and eval_state.get("post_mutation_failed_cases", 0) == 0:
+            violations.append(("AIF-053", "evaluation_harness_state critical behavioral mutation produced 0 failing cases (MUTATION_INSENSITIVE)."))
+        if eval_state.get("trigger_false_positives", 0) > 0 or eval_state.get("trigger_false_negatives", 0) > 0:
+            violations.append(("AIF-054", "evaluation_harness_state has trigger false positives or false negatives (TRIGGER_VIOLATION)."))
+        if eval_state.get("case_status") == "PASS" and (eval_state.get("execution_count", 1) <= 0 or eval_state.get("execution_occurred") is False or eval_state.get("observability") == "NOT_OBSERVABLE"):
+            violations.append(("AIF-055", "evaluation_harness_state marks vacuous/zero-execution case as PASS (VACUOUS_EVALUATION)."))
+
 
 
     # AIF-010, AIF-012, AIF-027: Finding checks

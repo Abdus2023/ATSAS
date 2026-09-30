@@ -44,20 +44,27 @@ def evaluate_four_level_oracle(
     exp_cls = case_obj.get("expected_classification", {})
     oracle_spec = case_obj.get("oracle", {})
     target_skill = case_obj.get("target_skill", "")
+    obs_cls = observed.get("classification")
+    obs_ev = observed.get("observed_evidence", [])
 
-    # AIF-050: Oracle Independence check
-    if observed.get("derive_oracle_from_self") is True:
-        failures.append("AIF-050: Skill output attempted to override independent oracle expectation")
+    # AIF-050: Oracle Independence check (anti-circularity: Oracle(skill_output, independent_fixture) != Oracle(skill_output, skill_output))
+    if (
+        observed.get("derive_oracle_from_self") is True
+        or oracle_spec.get("expected_source") == "SKILL_OUTPUT"
+        or (isinstance(obs_cls, dict) and exp_cls is obs_cls)
+    ):
+        failures.append("AIF-050 (ORACLE_INDEPENDENCE_VIOLATION): Oracle must never derive expected truth from skill output")
 
     # AIF-049 & AIF-055: Non-Vacuity & Execution Observation check
     execution_occurred = bool(observed.get("execution_occurred", False))
     observation_produced = bool(observed.get("observation_produced", False))
-    obs_cls = observed.get("classification")
-    obs_ev = observed.get("observed_evidence", [])
+    obs_cost = observed.get("cost") if isinstance(observed.get("cost"), dict) else {}
+    execution_count = obs_cost.get("commands_executed", 1 if execution_occurred else 0)
+    raw_observation_present = observation_produced and bool(observed.get("observed_evidence"))
 
-    if not execution_occurred:
-        failures.append("AIF-055 (VACUOUS_TEST): required execution never occurred")
-    if not observation_produced:
+    if not execution_occurred or execution_count <= 0:
+        failures.append(f"AIF-055 (VACUOUS_TEST): required execution never occurred (execution_count={execution_count})")
+    if not observation_produced or not raw_observation_present:
         failures.append("AIF-049 (MISSING_OBSERVATION): required raw observation was not produced")
 
     # Level 1 — Structural: required fields exist, valid types, valid enum values
@@ -154,7 +161,14 @@ def evaluate_four_level_oracle(
 
     # Section 11.8: A skill must not be considered strongly evaluated based solely on Level 1
     all_four_levels_pass = level_1_pass and level_2_pass and level_3_pass and level_4_pass
-    matched = execution_occurred and observation_produced and all_four_levels_pass and len(failures) == 0
+    matched = (
+        execution_occurred
+        and execution_count > 0
+        and observation_produced
+        and raw_observation_present
+        and all_four_levels_pass
+        and len(failures) == 0
+    )
 
     if observed.get("observability") == "NOT_OBSERVABLE":
         status = "NOT_OBSERVABLE"
