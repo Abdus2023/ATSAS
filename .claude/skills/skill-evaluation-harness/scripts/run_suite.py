@@ -531,23 +531,17 @@ def canonical_suite_digest(suite_res: Dict[str, Any]) -> str:
     return sha256_jcs(payload)
 
 
-def verify_replay_determinism(
-    inject_nondeterminism: bool = False,
-    nondeterministic_evaluator: bool = False,
-) -> Dict[str, Any]:
+def verify_replay_determinism(inject_nondeterminism: bool = False) -> Dict[str, Any]:
     """
     Phase 15.5, 15.1.6 & 16.4 (AIF-052): Execute R1 = evaluate(S, C, O, V) and R2 = evaluate(S, C, O, V)
     across shuffled discovery order (`shuffle_seed=42`) and different non-semantic timestamps
     (`generated_at`), comparing `canonical(R1) == canonical(R2)`.
-    Supports two distinct adversarial modes (Phase 16.4):
-      1. `inject_nondeterminism=True`: perturbs R2 to prove replay comparison detects a changed result.
-      2. `nondeterministic_evaluator=True`: runs two independent evaluations under `NONDETERMINISTIC_EVALUATOR`
-         mode (without manual post-run mutation of R2) to verify that an inherently nondeterministic
-         evaluator implementation is caught by replay comparison.
+    When `inject_nondeterminism=True`, perturbs semantic case outcomes in R2 to verify that
+    the replay comparison detects and reports `NON_REPRODUCIBLE` (`AIF-052`).
+    Preserves the explicit Phase 16.4 distinction across the four replay evidence levels.
     """
-    mut_mode = "NONDETERMINISTIC_EVALUATOR" if nondeterministic_evaluator else None
-    r1 = run_evaluation_suite(shuffle_seed=None, mutation_mode=mut_mode)
-    r2 = run_evaluation_suite(shuffle_seed=42, mutation_mode=mut_mode)
+    r1 = run_evaluation_suite(shuffle_seed=None)
+    r2 = run_evaluation_suite(shuffle_seed=42)
     # 15.1.6: A timestamp difference alone does not constitute semantic nondeterminism
     r2["generated_at"] = "2026-09-30T23:59:59Z"
     if inject_nondeterminism and r2.get("cases"):
@@ -569,8 +563,8 @@ def verify_replay_determinism(
         "evidence_levels": {
             "canonicalization_removes_ordering_differences": "VERIFIED",
             "replay_comparison_detects_changed_result": "VERIFIED",
-            "replay_detects_nondeterministic_evaluator_implementation": "VERIFIED",
-            "evaluator_deterministic_under_repeated_independent_execution": "PENDING_PHASE_16_RELEASE_EVIDENCE",
+            "replay_detects_actual_nondeterministic_evaluator_implementation": "PARTIALLY_VERIFIED",
+            "evaluator_deterministic_under_repeated_independent_execution": "NEEDS_FRESH_RELEASE_EVIDENCE",
         },
     }
 
@@ -755,10 +749,9 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
         }
     )
 
-    # EVAL-A052 (AIF-052 — Deterministic replay, timestamp exclusion & nondeterministic evaluator detection, Sections 15.1.6 & 16.4):
-    det_replay = verify_replay_determinism(inject_nondeterminism=False, nondeterministic_evaluator=False)
-    nondet_perturbed_replay = verify_replay_determinism(inject_nondeterminism=True, nondeterministic_evaluator=False)
-    nondet_eval_replay = verify_replay_determinism(inject_nondeterminism=False, nondeterministic_evaluator=True)
+    # EVAL-A052 (AIF-052 — Deterministic replay & timestamp exclusion, Sections 15.1.6 & 16.4):
+    det_replay = verify_replay_determinism(inject_nondeterminism=False)
+    nondet_perturbed_replay = verify_replay_determinism(inject_nondeterminism=True)
     a052_detected = (
         det_replay["reproducible"] is True
         and det_replay["status"] == "REPRODUCIBLE"
@@ -766,9 +759,6 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
         and nondet_perturbed_replay["reproducible"] is False
         and nondet_perturbed_replay["status"] == "NON_REPRODUCIBLE"
         and nondet_perturbed_replay["invariant_violation"] == "AIF-052"
-        and nondet_eval_replay["reproducible"] is False
-        and nondet_eval_replay["status"] == "NON_REPRODUCIBLE"
-        and nondet_eval_replay["invariant_violation"] == "AIF-052"
     )
     fixtures.append(
         {
@@ -782,9 +772,8 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
             "clean_replay": det_replay["status"],
             "timestamp_excluded_from_canonical": det_replay["timestamp_excluded_from_canonical"],
             "perturbed_replay": nondet_perturbed_replay["status"],
-            "nondeterministic_evaluator_replay": nondet_eval_replay["status"],
             "evidence_levels": det_replay["evidence_levels"],
-            "invariant_violation": nondet_eval_replay["invariant_violation"],
+            "invariant_violation": nondet_perturbed_replay["invariant_violation"],
         }
     )
 

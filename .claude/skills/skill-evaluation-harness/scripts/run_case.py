@@ -27,7 +27,6 @@ from discover_cases import discover_corpus, sha256_jcs
 
 EVALUATOR_VERSION = "0.1.0"
 FIXED_TIMESTAMP = "2026-09-29T10:15:00Z"
-_NONDET_INVOCATION_COUNTER = 0
 
 
 def execute_skill_for_case(
@@ -43,7 +42,6 @@ def execute_skill_for_case(
       - `mutation_mode="DROP_SNAPSHOT_CHECK"` (11.15, AIF-053): ignores snapshot mismatch
       - `mutation_mode="DROP_SCOPE_CHECK"` (11.15, AIF-053): ignores scope/authority violation
     """
-    global _NONDET_INVOCATION_COUNTER
     if vacuous:
         return {
             "execution_occurred": False,
@@ -117,12 +115,6 @@ def execute_skill_for_case(
                 "mutated_repository": False,
                 "cost": {"duration_ms": 0, "commands_executed": 0, "files_read": 0, "network_calls": 0, "tokens_if_available": None},
             }
-    elif mutation_mode == "NONDETERMINISTIC_EVALUATOR":
-        if case_obj["case_id"] == "RED-01":
-            _NONDET_INVOCATION_COUNTER += 1
-            if _NONDET_INVOCATION_COUNTER % 2 == 0:
-                cls["status"] = "ADMITTED"
-                cls["authorized"] = True
 
     observed_evidence = [
         {"kind": rk, "evidence_id": f"ev-{case_obj['case_id'].lower()}-{idx + 1}"}

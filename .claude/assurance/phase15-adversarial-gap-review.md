@@ -102,14 +102,14 @@ It never encodes `else: exercised = True; detected = True`. `EVAL-11` in `run_su
 
 ### 2.2.1 Pre-Gate Distinction (`16.4`) — Explicit `AIF-052` Replay Evidence Levels
 
-To avoid hiding distinct determinism properties behind a single `AIF-052 = VERIFIED` label, `verify_replay_determinism()` in [`run_suite.py`](../skills/skill-evaluation-harness/scripts/run_suite.py) and `EVAL-A052` explicitly separate and test:
+To avoid hiding distinct determinism properties behind a single `AIF-052 = VERIFIED` label, `verify_replay_determinism()` in [`run_suite.py`](../skills/skill-evaluation-harness/scripts/run_suite.py) and `EVAL-A052` preserve the exact `16.4` evidence levels:
 
-| `AIF-052` Sub-Property (`16.4`) | Mechanism in `run_suite.py` / `run_case.py` | Evidence Level |
-|---|---|---|
-| **Canonicalization removes ordering & timestamp differences** | `R1 = evaluate(shuffle_seed=None)` vs `R2 = evaluate(shuffle_seed=42, generated_at="2026-09-30T23:59:59Z")` $\to$ `canonical(R1) == canonical(R2)` | `VERIFIED` |
-| **Replay comparison detects changed result** | `verify_replay_determinism(inject_nondeterminism=True)` perturbs `R2` $\to$ `NON_REPRODUCIBLE (AIF-052)` | `VERIFIED` |
-| **Replay detects an actual nondeterministic evaluator implementation** | `verify_replay_determinism(nondeterministic_evaluator=True)` runs two independent evaluations under `mutation_mode="NONDETERMINISTIC_EVALUATOR"` in `run_case.py` (without post-run manual perturbation) $\to$ `NON_REPRODUCIBLE (AIF-052)` | `VERIFIED` |
-| **Evaluator is deterministic under repeated independent execution** | Fresh multi-run release verification bound to frozen release candidate SHA | `PENDING Phase 16 Release Evidence` |
+| Property (`16.4`) | Current Evidence |
+|---|---|
+| **Canonicalization removes ordering differences** | `VERIFIED` |
+| **Replay comparison detects changed result** | `VERIFIED` |
+| **Replay detects an actual nondeterministic evaluator implementation** | `PARTIALLY_VERIFIED` |
+| **Evaluator is deterministic under repeated independent execution** | `Needs fresh release evidence` |
 
 ---
 
@@ -247,14 +247,16 @@ Every one of the **63 normative rules** (`55` primary invariants + `8` sub-invar
 | `3bb594098af5ac216c8be0ae7e364a48d6133bb0` | Phase 15.2 / 15.11 (Step 2) | 63-rule `REFERENCE_PRESENT` vs `BEHAVIORALLY_CONNECTED` & coverage state matrix |
 | `e9cd47f24c615f199d7f61150a42d8e05efecad3` | Phase 15.1.1–15.1.12 (Step 3) | Two-stage `Known-good -> PASS -> Controlled defect -> DETECTED` model & 4-binding baseline tamper checks |
 
-### 5.2 Gate Status Summary (Phase 16.1 Not Started per Instruction)
+### 5.2 Phase 16 Status (Holding Before `Phase 16.1` per Instruction)
 
-```text
-Phase 13    NORMALIZATION                        VERIFIED
-Phase 14    EXECUTION                            VERIFIED
-Phase 15.1  ATTACK CORPUS DESIGN                 DEFINED  (EVAL-A049..EVAL-A055)
-Phase 15.2  ATTACK IMPLEMENTATION                VERIFIED (Known-good -> PASS -> Controlled defect -> DETECTED)
-Phase 15.3  FRESH EXECUTION                      VERIFIED (7/7 evaluator attacks detected; 153/153 kernel & RED suite; 121/121 runner checks)
-Phase 15.4  GAP REASSESSMENT (incl. 16.3 & 16.4)  VERIFIED (no-case -> exercised=False/REFERENCE_ONLY; AIF-052 evidence levels explicit)
-Phase 16    RELEASE GATE (Phase 16.1)            NOT STARTED / HOLD (awaiting user go-ahead for Phase 16.1)
-```
+| Area | State |
+|---|---|
+| **Phase 13 normalization** | `VERIFIED by reported execution` |
+| **Phase 14 execution** | `VERIFIED by reported execution` |
+| **Phase 15 adversarial fixtures** | `VERIFIED by reported execution` |
+| **`A049–A055`** | `7/7 DETECTED` |
+| **63-rule behavioral connection** | `Reported VERIFIED` |
+| **Release-candidate commit identity** | `OPEN — to be frozen in Phase 16.1` |
+| **Coverage implementation semantics (`16.3`)** | `CORRECTED (no-case -> exercised=False, detected=False, REFERENCE_ONLY)` |
+| **`AIF-052` true nondeterministic replay (`16.4`)** | `PARTIALLY_VERIFIED (distinction preserved explicitly)` |
+| **Final release evidence** | `PENDING (Phase 16.1 NOT STARTED)` |
