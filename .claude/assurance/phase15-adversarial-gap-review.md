@@ -1,11 +1,15 @@
-# Phase 15 — Adversarial Gap Review & Phase 15.1 Evaluator Attack Corpus (`EVAL-A049`..`EVAL-A055`)
+# Phase 15 — Adversarial Gap Review, Phase 15.1 Evaluator Attack Corpus (`EVAL-A049`..`EVAL-A055`) & Phase 16–17 Release-Gate Audit
 
 ```text
 Document Class: HISTORICAL / EVIDENCE
 Protocol: AIF-0.1.0
 Evaluated Branch: arena/01a0ecca-atsas
 Prior Baseline Commit: 059856dfba9bebee291c360e1d18f1621b3f724a
-Currentness: CURRENT BRANCH EVIDENCE (Phase 15 Adversarial Gap Review & Phase 15.1 Evaluator Attack Corpus)
+Evaluated Release Candidate: 14542c60e2f157fa69886f9b0e400b64c58b4d1e
+Evaluated Candidate Tree: 9c904fc1e21d76b4bb73010f614ef00997e9b1d1
+Evaluated Snapshot ID: snap-rc-14542c60e2f1
+Snapshot-Bound Receipt ID: sha256:831a0521e178ed2a2f1221d334986c03ec6e564c94963b510ae6fd46084b90ac
+Currentness: CURRENT BRANCH EVIDENCE (Phase 15 Adversarial Gap Review, Phase 16.1–16.4 Verification & Phase 17.1–17.8 Post-Gate Transition Audit)
 ```
 
 ---
@@ -48,7 +52,7 @@ Previously, `mut_aif_034`..`mut_aif_055` in [`tests/aif-v01-red-suite.py`](../..
 
 ### 2.1.1 Corpus Versioning Discipline (`15.1.11`)
 
-In accordance with Section `15.1.11`, `aif-eval-corpus-0.2` (`case_corpus_digest = sha256:b288f19ff6ccb633cda544b602aadd7fb01bb1cfffeec169b0ade639d618dc5c`) is preserved unchanged, and `EVAL-A049`..`EVAL-A055` are registered as the additive `ADVERSARIAL` layer (`aif-evaluator-attack-corpus-v1`) in `skill-evaluation-harness` (`C-08`).
+In accordance with Section `15.1.11`, `aif-eval-corpus-0.2` (`case_corpus_digest = sha256:b288f19ff6ccb633cda544b602aadd7fb01bb1cfffeec169b0ade639d618dc5c`, `79` cases) remains the preserved base corpus, and `aif-eval-corpus-0.3` remains an independently identifiable **additive `ADVERSARIAL` layer** (`EVAL-A049`..`EVAL-A055`, `adversarial_corpus_digest = sha256:cdb730109ec42522e8d6d54217456145015f95c08004c818138d6ce36a1b7aa8`) in `skill-evaluation-harness` (`C-08`, `discover_cases.py --category ADVERSARIAL`).
 
 ### 2.1.2 Release-Gate Consequence (`15.1.12`)
 
@@ -100,16 +104,16 @@ It never encodes `else: exercised = True; detected = True`. `EVAL-11` in `run_su
 
 ---
 
-### 2.2.1 Pre-Gate Distinction (`16.4`) — Explicit `AIF-052` Replay Evidence Levels
+### 2.2.1 Pre-Gate & Post-Gate Distinction (`16.4`) — Explicit `AIF-052` Replay Evidence Levels
 
 To avoid hiding distinct determinism properties behind a single `AIF-052 = VERIFIED` label, `verify_replay_determinism()` in [`run_suite.py`](../skills/skill-evaluation-harness/scripts/run_suite.py) and `EVAL-A052` preserve the exact `16.4` evidence levels:
 
-| Property (`16.4`) | Current Evidence |
-|---|---|
-| **Canonicalization removes ordering differences** | `VERIFIED` |
-| **Replay comparison detects changed result** | `VERIFIED` |
-| **Replay detects an actual nondeterministic evaluator implementation** | `PARTIALLY_VERIFIED` |
-| **Evaluator is deterministic under repeated independent execution** | `Needs fresh release evidence` |
+| Property (`16.4`) | Static Pre-Gate Label (`run_suite.py`) | Reconciled Phase 16.4 Status (`14542c60e2f1`) |
+|---|---|---|
+| **1. Canonicalization removes ordering & timestamp differences** | `VERIFIED` | `VERIFIED` |
+| **2. Replay comparison detects changed semantic result** | `VERIFIED` | `VERIFIED` (`NON_REPRODUCIBLE`) |
+| **3. Replay detects an actual nondeterministic evaluator implementation** | `PARTIALLY_VERIFIED` | **`PARTIALLY_VERIFIED` (Accepted Residual Boundary — Option A)** |
+| **4. Evaluator is deterministic under repeated independent execution** | `NEEDS_FRESH_RELEASE_EVIDENCE` | **`VERIFIED`** (`sha256:52a479fb6895464614026d3a6d4762bb478b6c8ba36eda482371c77e7bbadb45` / `sha256:ff40e210cee0e6e654d5ba2599553168efff7932ed5f91c1dd21518199ab1f4f`) |
 
 ---
 
@@ -234,7 +238,7 @@ Every one of the **63 normative rules** (`55` primary invariants + `8` sub-invar
 
 ---
 
-## 5. Ordered Branch Commit Lineage & Gate Status Summary
+## 5. Ordered Branch Commit Lineage, Phase 16 Verification & Phase 17 Release Transition Audit (`14542c60e2f157fa69886f9b0e400b64c58b4d1e`)
 
 ### 5.1 Ordered Commit Lineage on `arena/01a0ecca-atsas`
 
@@ -246,17 +250,98 @@ Every one of the **63 normative rules** (`55` primary invariants + `8` sub-invar
 | `7dbd895b684e94e2396a423cac88ffda01bb4a1f` | Phase 15 / 15.1 (Step 1) | Initial implementation of `EVAL-A049..A055`, structured state mutators (`AIF-034..055`), and 3-tier `run-tests.sh` separation |
 | `3bb594098af5ac216c8be0ae7e364a48d6133bb0` | Phase 15.2 / 15.11 (Step 2) | 63-rule `REFERENCE_PRESENT` vs `BEHAVIORALLY_CONNECTED` & coverage state matrix |
 | `e9cd47f24c615f199d7f61150a42d8e05efecad3` | Phase 15.1.1–15.1.12 (Step 3) | Two-stage `Known-good -> PASS -> Controlled defect -> DETECTED` model & 4-binding baseline tamper checks |
+| `b308bc814099caba7278f997f9622795563ad149` | Phase 16.3 / 16.4 (Step 4) | Fixed `16.3` no-case coverage semantics (`no case -> exercised=False, detected=False, REFERENCE_ONLY`) and explicit `16.4` `AIF-052` replay evidence levels |
+| `4f2a43933dd7e052515efeca05aba1898555d270` | Phase 16.4 (Historical Step 5) | Preserved `Phase 16.4` `PARTIALLY_VERIFIED` replay distinction without adding extra evaluator mechanisms (historical/superseded candidate chain) |
+| `14542c60e2f157fa69886f9b0e400b64c58b4d1e` | **Authoritative Release Candidate** | Added `Phase 15.1.11` `ADVERSARIAL` category discovery (`discover_cases.py --category ADVERSARIAL`) and `aif-eval-corpus-0.3` migration metadata (`tree: 9c904fc1e21d76b4bb73010f614ef00997e9b1d1`) |
 
-### 5.2 Phase 16 Status (Holding Before `Phase 16.1` per Instruction)
+> **Candidate / Audit Separation (`AIF-008`, `AIF-008A`, `AIF-014`)**:
+> `verified(candidate = 14542c60e2f157fa69886f9b0e400b64c58b4d1e)` is distinct from `documented_by(audit_commit)`. This documentation commit records the verification and transition evidence for `14542c60e2f157fa69886f9b0e400b64c58b4d1e`; it does not replace `14542c60e2f157fa69886f9b0e400b64c58b4d1e` as the evaluated release candidate.
 
-| Area | State |
+---
+
+### 5.2 Phase 16.1–16.4 Verification & Reconciliation Ledger (`Candidate 14542c60e2f157fa69886f9b0e400b64c58b4d1e`)
+
+```text
+ReleaseCandidate {
+    repository:                Abdus2023/ATSAS
+    branch:                    arena/01a0ecca-atsas
+    evaluated_candidate:       14542c60e2f157fa69886f9b0e400b64c58b4d1e
+    candidate_tree:            9c904fc1e21d76b4bb73010f614ef00997e9b1d1
+    evaluated_snapshot:        snap-rc-14542c60e2f1
+    evidence_receipt_id:       sha256:831a0521e178ed2a2f1221d334986c03ec6e564c94963b510ae6fd46084b90ac
+    AIF_VERSION:               0.1.0
+    base_corpus_id:            aif-eval-corpus-0.2 (79 cases)
+    base_corpus_digest:        sha256:b288f19ff6ccb633cda544b602aadd7fb01bb1cfffeec169b0ade639d618dc5c
+    adversarial_layer_id:      aif-eval-corpus-0.3 (7 ADVERSARIAL cases: EVAL-A049..EVAL-A055)
+    adversarial_layer_digest:  sha256:cdb730109ec42522e8d6d54217456145015f95c08004c818138d6ce36a1b7aa8
+    oracle_digest:             sha256:a47f782f074a8821841034ec34fded8625ad036188e6509d20606a3b417d4eba
+    evaluator_version:         0.1.0
+}
+```
+
+| # | Check / Phase | Command / Method Executed | Exit Code | Observed Evidence Bound to `14542c60e2f157fa69886f9b0e400b64c58b4d1e` |
+|---|---|---|---|---|
+| 1 | **Git synchronization (`16.1.2`)** | `bash .claude/skills/session-git-sync-check/scripts/git_sync_check.sh arena/01a0ecca-atsas` | `0` | `local HEAD == remote tip == 14542c60e2f157fa69886f9b0e400b64c58b4d1e` (`OK`) |
+| 2 | **Worktree & Index (`16.1.3`–`16.1.4`)** | `git status --porcelain && git diff && git diff --cached` | `0` | `PRE = 0/0/0 lines`; `POST = 0/0/0 lines` (`CLEAN`) |
+| 3 | **Skill validation (`16.1.5`)** | `python3 .claude/skills/skill-creator/scripts/validate_skill.py --all .claude/skills` | `0` | `22 skill(s) checked, 0 error(s)` |
+| 4 | **Repository test suite (`16.1.5`)** | `./tests/run-tests.sh` | `0` | `121 passed, 0 failed` (`93 INTEGRITY`, `18 EXECUTION`, `10 ADVERSARIAL`) |
+| 5 | **AIF-0.1.0 RED suite (`16.1.5`)** | `python3 tests/aif-v01-red-suite.py` | `0` | `153 passed, 0 failed` (kernel & corpus unmutated `sha256:d349e216b5041c84...`) |
+| 6 | **C-08 self-test (`16.1.5`)** | `python3 .claude/skills/skill-evaluation-harness/scripts/run_suite.py --self-test` | `0` | `20 passed, 0 failed` (`EVAL-01..13`, `EVAL-A049..A055`) |
+| 7 | **Corpus & layer separation (`16.1.6`)** | `discover_cases.py --summary` & `discover_cases.py --category ADVERSARIAL --summary` | `0` | Base `aif-eval-corpus-0.2` (`79` cases, `sha256:b288f19f...`); additive `aif-eval-corpus-0.3` (`7` `ADVERSARIAL` cases, `sha256:cdb73010...`) |
+| 8 | **Evaluator Attack Corpus (`16.1.6`)** | `run_evaluator_attack_corpus()` (`EVAL-A049..A055`) | `0` | `7/7 DETECTED` without `claim_scope` string injection |
+| 9 | **63-rule coverage & `16.3` control** | `compute_invariant_coverage(corpus, suite["cases"])` | `0` | `63/63 BEHAVIORALLY_CONNECTED` + `VERIFIED`; `simulated_no_case_invariants={"AIF-001"}` $\to$ `cases=[]`, `exercised=False`, `detected=False`, `connection_status="REFERENCE_PRESENT"`, `coverage_state="REFERENCE_ONLY"` |
+| 10 | **`AIF-052` two-process replay (`16.4`)** | Two separate OS-process runs of `run_evaluation_suite()` & `generate_report.py --json` | `0` | Full 79-case `canonical(R1) == canonical(R2) == sha256:52a479fb6895464614026d3a6d4762bb478b6c8ba36eda482371c77e7bbadb45`; report summary `sha256:ff40e210cee0e6e654d5ba2599553168efff7932ed5f91c1dd21518199ab1f4f` (`REPRODUCIBLE`); perturbed replay $\to$ `NON_REPRODUCIBLE`; `P3 = PARTIALLY_VERIFIED` retained |
+| 11 | **Phase 12 interface freeze** | `verify_phase12_interface_freeze()` | `0` | `22/22` skills; `authority_owners=["arena-intake-and-authority"]`; `completion_owners=["arena-completion-gate"]` |
+| 12 | **Receipt & Completion Gate (`16.1.7`)** | `generate_receipt.py` + `validate_receipt.py` + `evaluate_completion.py` | `0` | Receipt `sha256:831a0521e178ed2a2f1221d334986c03ec6e564c94963b510ae6fd46084b90ac` (`receipt_valid=true`, `claims_verified=true`, `valid_receipt_implies_verified_claims=false`); Completion Gate = `COMPLETABLE` (`7/7` mandatory claims `VERIFIED`, `0` unmet, `valid=true`) |
+
+---
+
+### 5.3 Phase 17.1–17.8 Post-Gate Inspection & Release Transition Record
+
+#### 5.3.1 Subtree Object Hashes at Candidate `14542c60e2f157fa69886f9b0e400b64c58b4d1e` (`17.1`–`17.2`)
+
+| Path / Subtree | Object SHA at `14542c60e2f157fa69886f9b0e400b64c58b4d1e` |
 |---|---|
-| **Phase 13 normalization** | `VERIFIED by reported execution` |
-| **Phase 14 execution** | `VERIFIED by reported execution` |
-| **Phase 15 adversarial fixtures** | `VERIFIED by reported execution` |
-| **`A049–A055`** | `7/7 DETECTED` |
-| **63-rule behavioral connection** | `Reported VERIFIED` |
-| **Release-candidate commit identity** | `OPEN — to be frozen in Phase 16.1` |
-| **Coverage implementation semantics (`16.3`)** | `CORRECTED (no-case -> exercised=False, detected=False, REFERENCE_ONLY)` |
-| **`AIF-052` true nondeterministic replay (`16.4`)** | `PARTIALLY_VERIFIED (distinction preserved explicitly)` |
-| **Final release evidence** | `PENDING (Phase 16.1 NOT STARTED)` |
+| `.claude/skills/_shared/aif` | `c32ac306f18bd8afe6103840917e7fe041112830` |
+| `.claude/skills` | `9a0bee739bcbc1f6ba3ea4ee67ecce8bf8faea26` |
+| `bin` | `be7899bb0958bdbdddc4fd803f3f4fb60b8cbdbf` |
+| `tests` | `21c50ea00a4347d6867528aa1d99a1433161ad80` |
+| `schemas` | `97e6c4eeb5e0b6c471db30a8574094ded7e6033f` |
+| `spec` | `972290926560b35b156ac0839c12e5709000e3a0` |
+| `examples` | `4bde0c08b5aebd497a3fd566d0a385673f3e415a` |
+| `README.md` | `9a549e3833cbfde5409a0a6424c5b52dd02f9ed7` |
+
+#### 5.3.2 Independent Gate Classifications & Release Decision Record (`17.3`–`17.6`)
+
+```text
+IDENTITY       = VERIFIED        (candidate = 14542c60e2f157fa69886f9b0e400b64c58b4d1e; tree = 9c904fc1e21d76b4bb73010f614ef00997e9b1d1)
+STATE          = VERIFIED        (candidate worktree = CLEAN; index = CLEAN; candidate mutation = NONE)
+CONFORMANCE    = VERIFIED        (22/22 skills valid; run-tests.sh: 93 INTEGRITY, 18 EXECUTION, 10 ADVERSARIAL; RED suite: 153/153; C-08: 20/20)
+ADVERSARIAL    = VERIFIED        (EVAL-A049..EVAL-A055: 7/7 detected in aif-eval-corpus-0.3; runner self-integrity attack: detected)
+REPRODUCTION   = VERIFIED*       (AIF-052 P1, P2, P4 = VERIFIED; P3 = PARTIALLY_VERIFIED accepted as residual boundary [Option A])
+TRACEABILITY   = VERIFIED        (63/63 rules BEHAVIORALLY_CONNECTED & VERIFIED; 16.3 no-case control -> exercised=False, detected=False, REFERENCE_ONLY)
+AUTHORITY      = VERIFIED        (ONLY arena-intake-and-authority authorizes; ONLY arena-completion-gate evaluates completion; COMPLETABLE != RELEASED)
+EVIDENCE       = VERIFIED        (Receipt sha256:831a0521e178ed2a... valid & bound to snap-rc-14542c60e2f1; Completion Gate = COMPLETABLE)
+EXTERNAL_CI    = NOT_OBSERVABLE  (No .github/workflows/ configured; GitHub commit-status/check-runs = 0; kept distinct from local execution VERIFIED)
+```
+
+#### 5.3.3 Final Immutable Release Reference Specification & Transition State (`17.7`–`17.8`)
+
+```text
+ImmutableReleaseReference {
+    protocol_family:            AIF-0.1
+    frozen_version:             0.1.0
+    repository:                 Abdus2023/ATSAS
+    source_branch:              arena/01a0ecca-atsas
+    target_commit:              14542c60e2f157fa69886f9b0e400b64c58b4d1e
+    target_tree:                9c904fc1e21d76b4bb73010f614ef00997e9b1d1
+    evaluated_snapshot:         snap-rc-14542c60e2f1
+    evidence_receipt_id:        sha256:831a0521e178ed2a2f1221d334986c03ec6e564c94963b510ae6fd46084b90ac
+    base_corpus_digest:         sha256:b288f19ff6ccb633cda544b602aadd7fb01bb1cfffeec169b0ade639d618dc5c
+    adversarial_layer_digest:   sha256:cdb730109ec42522e8d6d54217456145015f95c08004c818138d6ce36a1b7aa8
+    oracle_digest:              sha256:a47f782f074a8821841034ec34fded8625ad036188e6509d20606a3b417d4eba
+    canonical_suite_digest:     sha256:52a479fb6895464614026d3a6d4762bb478b6c8ba36eda482371c77e7bbadb45
+    accepted_residuals:         ["AIF-052.P3 = PARTIALLY_VERIFIED", "EXTERNAL_CI = NOT_OBSERVABLE"]
+    transition_state:           VERIFIED_CANDIDATE (RELEASE = NOT_EXECUTED; requires separate RELEASE authority)
+}
+```
