@@ -345,3 +345,85 @@ ImmutableReleaseReference {
     transition_state:           VERIFIED_CANDIDATE (RELEASE = NOT_EXECUTED; requires separate RELEASE authority)
 }
 ```
+
+### 5.4 Phase 17.7–17.9 Release Execution, Post-Release Verification & Platform Immutability Inspection (`aif-v0.1.0`)
+
+Following explicit release authorization (`RELEASE TAG: aif-v0.1.0`, `TARGET: 14542c60e2f157fa69886f9b0e400b64c58b4d1e`), **Phase 17.7 (`CREATE_TAG` / `CREATE_RELEASE`)**, **Phase 17.8 (`VERIFY_RELEASE_REFERENCE`)**, and **Phase 17.9 (`VERIFY_PLATFORM_IMMUTABILITY`)** were executed without mutating the evaluated candidate, corpus, evaluator, oracle, or skills:
+
+```text
+Phase 17.7–17.9 Release & Platform Immutability Ledger
+──────────────────────────────────────────────────────────────────────────────────────────
+Release Tag / Ref               : aif-v0.1.0 (refs/tags/aif-v0.1.0)
+GitHub Release ID               : 400303911
+GitHub Release Title            : AIF-0.1.0 (Candidate 14542c60e2f1)
+GitHub Release URL              : https://github.com/Abdus2023/ATSAS/releases/tag/aif-v0.1.0
+Published At                    : 2026-09-30T18:00:34Z (draft = false, prerelease = false)
+Release Target Commit           : 14542c60e2f157fa69886f9b0e400b64c58b4d1e
+Release Target Tree             : 9c904fc1e21d76b4bb73010f614ef00997e9b1d1
+compare(aif-v0.1.0, 14542c60..) : status = identical (ahead_by = 0, behind_by = 0, files_len = 0)
+Post-Release Receipt (R2)       : sha256:6b88b863e75b5f5092d3371553edddd4c68f66d26c5c1689fd0ea70ada67e3e1
+Chained Previous Receipt (R1)   : sha256:831a0521e178ed2a2f1221d334986c03ec6e564c94963b510ae6fd46084b90ac
+Post-Release Gate Verdict       : COMPLETABLE (5/5 post-release claims VERIFIED; valid = true)
+Release Object .immutable       : FALSE / OBSERVED (release 400303911 reports "immutable": false; RELEASED != IMMUTABLE)
+Platform Immutability Policy    : NOT_OBSERVABLE   (GET /repos/Abdus2023/ATSAS/immutable-releases -> HTTP 403 administration=read)
+Organization Policy             : NOT_OBSERVABLE
+CLI Verifier                    : UNAVAILABLE      (gh v2.23.0 predates `gh release verify`)
+AIF-052.P3                      : PARTIALLY_VERIFIED (preserved)
+EXTERNAL_CI                     : NOT_OBSERVABLE     (preserved)
+```
+
+### 5.5 Phase 18.0 Release Closure & Evidence Index (`RELEASE_CLOSURE_INVARIANT`) & Phase 19 Next-Candidate Intake Rule
+
+```text
+RELEASE_CLOSURE_INVARIANT
+─────────────────────────
+released(aif-v0.1.0)
+    =
+verified(candidate@14542c60e2f157fa69886f9b0e400b64c58b4d1e)
+    =
+tree@9c904fc1e21d76b4bb73010f614ef00997e9b1d1
+
+documented_by(audit@701bb14ffe7d174be3255048b633fe5b254cfa1b..HEAD)
+    ≠
+evaluated(candidate)
+
+post_release_integrity
+    = VERIFIED
+
+candidate_mutation_after_evaluation
+    = NONE_OBSERVED
+
+NO_EVIDENCE
+    →
+NO_VERIFIED_CLAIM
+```
+
+#### 5.5.1 Three-Authority Separation
+
+```text
+EVALUATION AUTHORITY  : 14542c60e2f157fa69886f9b0e400b64c58b4d1e (tree 9c904fc1e21d76b4bb73010f614ef00997e9b1d1)
+RELEASE AUTHORITY     : aif-v0.1.0 (refs/tags/aif-v0.1.0, GitHub Release ID 400303911 -> 14542c60...)
+DOCUMENTATION RECORD  : 701bb14ffe7d174be3255048b633fe5b254cfa1b..HEAD (origin/arena/01a0ecca-atsas; .claude/assurance/ only)
+                        evaluation ≠ release reference ≠ documentation
+```
+
+#### 5.5.2 Phase 19 — `POST-RELEASE EVOLUTION / NEXT-CANDIDATE INTAKE` Rule
+
+`AIF-0.1.0` (`aif-v0.1.0`) is frozen and closed. Any subsequent modification to the specification, normative rules, skills, evaluator, oracle, or evaluation corpus establishes a **new candidate lineage** rather than an amendment to `aif-v0.1.0`:
+
+```text
+AIF-0.1.0 (aif-v0.1.0 @ 14542c60e2f157fa69886f9b0e400b64c58b4d1e)
+   │
+   └── FROZEN RELEASE LINEAGE
+            │
+            └── future change
+                    ↓
+              NEW CANDIDATE
+                    ↓
+              NEW SNAPSHOT
+                    ↓
+              NEW EVIDENCE (R1')
+                    ↓
+              NEW RELEASE GATE
+```
+
