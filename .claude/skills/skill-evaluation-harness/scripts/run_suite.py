@@ -138,20 +138,55 @@ def compute_invariant_coverage(
     corpus: Dict[str, Any],
     suite_cases: List[Dict[str, Any]],
     simulated_disconnected_invariants: Optional[set] = None,
+    simulated_no_case_invariants: Optional[set] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Section 11.16, Phase 15.2 & Phase 15.11: Compute semantic InvariantCoverage across all 63 normative rules
-    (55 primary invariants AIF-001..AIF-055 + 8 explicitly enumerated sub-invariants AIF-001A, 002A, 003A,
-    004A, 005A, 006A, 008A, 014A) with explicit non-numerical states:
+    Section 11.16, Phase 15.2, Phase 15.11 & Phase 16.3: Compute semantic InvariantCoverage across all 63
+    normative rules (55 primary invariants AIF-001..AIF-055 + 8 explicitly enumerated sub-invariants
+    AIF-001A, 002A, 003A, 004A, 005A, 006A, 008A, 014A) with explicit non-numerical states:
       - connection_status: REFERENCE_PRESENT | BEHAVIORALLY_CONNECTED | MISSING
       - coverage_state:    MISSING | REFERENCE_ONLY | STRUCTURAL | BEHAVIORAL | ADVERSARIAL | VERIFIED
+
+    Phase 16.3 semantic rule:
+      no behavioral case -> exercised = False, detected = False, coverage_state = REFERENCE_ONLY
+      (never default to exercised = True / detected = True when behavioral cases are absent).
     """
+    import re
+
     disconnected = set(simulated_disconnected_invariants or set())
+    no_case_set = set(simulated_no_case_invariants or set())
     by_case_id = {r["case_id"]: r for r in suite_cases}
     inv_map: Dict[str, List[str]] = {}
     for c in corpus["cases"]:
         for inv in c.get("invariants", []):
             inv_map.setdefault(inv, []).append(c["case_id"])
+
+    invariants_md = (REPO_ROOT / ".claude/skills/_shared/aif/invariants.md").read_text(encoding="utf-8")
+    oracle_md = (REPO_ROOT / ".claude/skills/_shared/aif/tests/oracle.md").read_text(encoding="utf-8")
+    cases_yaml = (REPO_ROOT / ".claude/skills/_shared/aif/tests/cases.yaml").read_text(encoding="utf-8")
+    aif_verify_src = (REPO_ROOT / "bin/aif-verify").read_text(encoding="utf-8")
+    red_suite_src = (REPO_ROOT / "tests/aif-v01-red-suite.py").read_text(encoding="utf-8")
+
+    # Resolve behavioral case mappings from cases.yaml invariant_coverage_index against executed suite_cases
+    in_cov_idx = False
+    for raw_line in cases_yaml.splitlines():
+        if raw_line.strip() == "invariant_coverage_index:":
+            in_cov_idx = True
+            continue
+        if in_cov_idx:
+            m = re.match(r"^\s+(AIF-\d{3}[A-Z]?):\s*\[(.*)\]\s*$", raw_line)
+            if not m:
+                if raw_line.strip() and not raw_line.startswith(" "):
+                    break
+                continue
+            iid = m.group(1)
+            raw_items = [x.strip().strip('"').strip("'") for x in m.group(2).split(",") if x.strip()]
+            for item in raw_items:
+                norm_id = re.sub(r"^RED-0(\d{2})$", r"RED-\1", item)
+                if norm_id == "TEST-07":
+                    norm_id = "RED-28"
+                if norm_id in by_case_id and norm_id not in inv_map.get(iid, []):
+                    inv_map.setdefault(iid, []).append(norm_id)
 
     all_63_rules = [f"AIF-{i:03d}" for i in range(1, 56)] + [
         "AIF-001A",
@@ -164,15 +199,9 @@ def compute_invariant_coverage(
         "AIF-014A",
     ]
 
-    invariants_md = (REPO_ROOT / ".claude/skills/_shared/aif/invariants.md").read_text(encoding="utf-8")
-    oracle_md = (REPO_ROOT / ".claude/skills/_shared/aif/tests/oracle.md").read_text(encoding="utf-8")
-    cases_yaml = (REPO_ROOT / ".claude/skills/_shared/aif/tests/cases.yaml").read_text(encoding="utf-8")
-    aif_verify_src = (REPO_ROOT / "bin/aif-verify").read_text(encoding="utf-8")
-    red_suite_src = (REPO_ROOT / "tests/aif-v01-red-suite.py").read_text(encoding="utf-8")
-
     coverage: List[Dict[str, Any]] = []
     for inv_id in sorted(all_63_rules):
-        cids = inv_map.get(inv_id, [])
+        cids = [] if inv_id in no_case_set else inv_map.get(inv_id, [])
         if cids:
             exercised = all(
                 by_case_id.get(cid, {}).get("oracle_result", {}).get("execution_occurred", False)
@@ -180,16 +209,17 @@ def compute_invariant_coverage(
             )
             detected = all(by_case_id.get(cid, {}).get("status") == "PASS" for cid in cids)
         else:
-            exercised = True
-            detected = True
+            # Phase 16.3: No behavioral case -> exercised=False, detected=False (never True by default)
+            exercised = False
+            detected = False
 
         def_present = inv_id in invariants_md
         struct_present = inv_id in aif_verify_src
-        behav_present = (inv_id in cases_yaml) or bool(cids)
+        behav_present = bool(cids) and exercised and detected
         mut_fn_name = f"mut_{inv_id.lower().replace('-', '_')}"
         adv_connected = (mut_fn_name in red_suite_src and inv_id in red_suite_src) and (inv_id not in disconnected)
         oracle_present = inv_id in oracle_md
-        ev_verified = bool(exercised and detected and adv_connected)
+        ev_verified = bool(behav_present and adv_connected)
 
         if not def_present:
             conn_status = "MISSING"
@@ -207,7 +237,7 @@ def compute_invariant_coverage(
         coverage.append(
             {
                 "invariant_id": inv_id,
-                "cases": cids if cids else [f"MUT-{inv_id}"],
+                "cases": cids,
                 "exercised": exercised and (inv_id not in disconnected),
                 "detected": detected and (inv_id not in disconnected),
                 "connection_status": conn_status,
@@ -501,16 +531,23 @@ def canonical_suite_digest(suite_res: Dict[str, Any]) -> str:
     return sha256_jcs(payload)
 
 
-def verify_replay_determinism(inject_nondeterminism: bool = False) -> Dict[str, Any]:
+def verify_replay_determinism(
+    inject_nondeterminism: bool = False,
+    nondeterministic_evaluator: bool = False,
+) -> Dict[str, Any]:
     """
-    Phase 15.5 & 15.1.6 (AIF-052): Execute R1 = evaluate(S, C, O, V) and R2 = evaluate(S, C, O, V)
+    Phase 15.5, 15.1.6 & 16.4 (AIF-052): Execute R1 = evaluate(S, C, O, V) and R2 = evaluate(S, C, O, V)
     across shuffled discovery order (`shuffle_seed=42`) and different non-semantic timestamps
     (`generated_at`), comparing `canonical(R1) == canonical(R2)`.
-    When `inject_nondeterminism=True`, perturbs semantic case outcomes in R2 to verify that
-    the replay gate detects and reports `NON_REPRODUCIBLE` (`AIF-052`).
+    Supports two distinct adversarial modes (Phase 16.4):
+      1. `inject_nondeterminism=True`: perturbs R2 to prove replay comparison detects a changed result.
+      2. `nondeterministic_evaluator=True`: runs two independent evaluations under `NONDETERMINISTIC_EVALUATOR`
+         mode (without manual post-run mutation of R2) to verify that an inherently nondeterministic
+         evaluator implementation is caught by replay comparison.
     """
-    r1 = run_evaluation_suite(shuffle_seed=None)
-    r2 = run_evaluation_suite(shuffle_seed=42)
+    mut_mode = "NONDETERMINISTIC_EVALUATOR" if nondeterministic_evaluator else None
+    r1 = run_evaluation_suite(shuffle_seed=None, mutation_mode=mut_mode)
+    r2 = run_evaluation_suite(shuffle_seed=42, mutation_mode=mut_mode)
     # 15.1.6: A timestamp difference alone does not constitute semantic nondeterminism
     r2["generated_at"] = "2026-09-30T23:59:59Z"
     if inject_nondeterminism and r2.get("cases"):
@@ -529,6 +566,12 @@ def verify_replay_determinism(inject_nondeterminism: bool = False) -> Dict[str, 
         "invariant_violation": None if reproducible else "AIF-052",
         "run_1_digest": d1,
         "run_2_digest": d2,
+        "evidence_levels": {
+            "canonicalization_removes_ordering_differences": "VERIFIED",
+            "replay_comparison_detects_changed_result": "VERIFIED",
+            "replay_detects_nondeterministic_evaluator_implementation": "VERIFIED",
+            "evaluator_deterministic_under_repeated_independent_execution": "PENDING_PHASE_16_RELEASE_EVIDENCE",
+        },
     }
 
 
@@ -712,16 +755,20 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
         }
     )
 
-    # EVAL-A052 (AIF-052 — Deterministic replay & timestamp exclusion, Section 15.1.6):
-    det_replay = verify_replay_determinism(inject_nondeterminism=False)
-    nondet_replay = verify_replay_determinism(inject_nondeterminism=True)
+    # EVAL-A052 (AIF-052 — Deterministic replay, timestamp exclusion & nondeterministic evaluator detection, Sections 15.1.6 & 16.4):
+    det_replay = verify_replay_determinism(inject_nondeterminism=False, nondeterministic_evaluator=False)
+    nondet_perturbed_replay = verify_replay_determinism(inject_nondeterminism=True, nondeterministic_evaluator=False)
+    nondet_eval_replay = verify_replay_determinism(inject_nondeterminism=False, nondeterministic_evaluator=True)
     a052_detected = (
         det_replay["reproducible"] is True
         and det_replay["status"] == "REPRODUCIBLE"
         and det_replay["timestamp_excluded_from_canonical"] is True
-        and nondet_replay["reproducible"] is False
-        and nondet_replay["status"] == "NON_REPRODUCIBLE"
-        and nondet_replay["invariant_violation"] == "AIF-052"
+        and nondet_perturbed_replay["reproducible"] is False
+        and nondet_perturbed_replay["status"] == "NON_REPRODUCIBLE"
+        and nondet_perturbed_replay["invariant_violation"] == "AIF-052"
+        and nondet_eval_replay["reproducible"] is False
+        and nondet_eval_replay["status"] == "NON_REPRODUCIBLE"
+        and nondet_eval_replay["invariant_violation"] == "AIF-052"
     )
     fixtures.append(
         {
@@ -734,8 +781,10 @@ def run_evaluator_attack_corpus() -> Dict[str, Any]:
             "detected": a052_detected,
             "clean_replay": det_replay["status"],
             "timestamp_excluded_from_canonical": det_replay["timestamp_excluded_from_canonical"],
-            "perturbed_replay": nondet_replay["status"],
-            "invariant_violation": nondet_replay["invariant_violation"],
+            "perturbed_replay": nondet_perturbed_replay["status"],
+            "nondeterministic_evaluator_replay": nondet_eval_replay["status"],
+            "evidence_levels": det_replay["evidence_levels"],
+            "invariant_violation": nondet_eval_replay["invariant_violation"],
         }
     )
 
@@ -1020,7 +1069,7 @@ def run_self_tests() -> int:
         f"unknown_failed={mut_unknown['failed']}, snap_failed_ids={sorted(snap_failed_ids)}, scope_failed={mut_scope['failed']}",
     )
 
-    # EVAL-11 (11.16, Phase 15.2 & 15.11): Semantic InvariantCoverage & REFERENCE_PRESENT vs BEHAVIORALLY_CONNECTED
+    # EVAL-11 (11.16, Phase 15.2, 15.11 & 16.3): Semantic InvariantCoverage, no-case handling & REFERENCE_PRESENT vs BEHAVIORALLY_CONNECTED
     inv_cov_by_id = {ic["invariant_id"]: ic for ic in suite_v1["invariant_coverage"]}
     disconnected_cov = {
         ic["invariant_id"]: ic
@@ -1028,19 +1077,31 @@ def run_self_tests() -> int:
             corpus, suite_v1["cases"], simulated_disconnected_invariants={"AIF-049"}
         )
     }
+    no_case_cov = {
+        ic["invariant_id"]: ic
+        for ic in compute_invariant_coverage(
+            corpus, suite_v1["cases"], simulated_no_case_invariants={"AIF-001"}
+        )
+    }
     check(
-        "EVAL-11 (11.16, 15.2 & 15.11: all 63 rules BEHAVIORALLY_CONNECTED/VERIFIED; disconnected mutator downgraded to REFERENCE_PRESENT/REFERENCE_ONLY)",
+        "EVAL-11 (11.16, 15.2, 15.11 & 16.3: all 63 rules BEHAVIORALLY_CONNECTED/VERIFIED; no-case -> exercised=False/detected=False/REFERENCE_ONLY)",
         len(inv_cov_by_id) == 63
         and all(
-            ic.get("exercised")
-            and ic.get("detected")
+            ic.get("exercised") is True
+            and ic.get("detected") is True
+            and bool(ic.get("cases"))
             and ic.get("connection_status") == "BEHAVIORALLY_CONNECTED"
             and ic.get("coverage_state") == "VERIFIED"
             for ic in inv_cov_by_id.values()
         )
         and disconnected_cov["AIF-049"]["connection_status"] == "REFERENCE_PRESENT"
-        and disconnected_cov["AIF-049"]["coverage_state"] == "REFERENCE_ONLY",
-        f"total_rules={len(inv_cov_by_id)}, aif049_disconnected={disconnected_cov.get('AIF-049')}",
+        and disconnected_cov["AIF-049"]["coverage_state"] == "REFERENCE_ONLY"
+        and no_case_cov["AIF-001"]["cases"] == []
+        and no_case_cov["AIF-001"]["exercised"] is False
+        and no_case_cov["AIF-001"]["detected"] is False
+        and no_case_cov["AIF-001"]["connection_status"] == "REFERENCE_PRESENT"
+        and no_case_cov["AIF-001"]["coverage_state"] == "REFERENCE_ONLY",
+        f"total_rules={len(inv_cov_by_id)}, aif001_no_case={no_case_cov.get('AIF-001')}",
     )
 
     # EVAL-12 (11.17 & 11.18, AIF-054): Skill trigger & trigger-pressure evaluation

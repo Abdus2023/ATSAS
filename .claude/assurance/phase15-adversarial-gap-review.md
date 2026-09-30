@@ -64,17 +64,18 @@ AIF-055 (EVAL-A055)  BEHAVIORAL + ADVERSARIAL   VERIFIED
 
 ---
 
-### 2.2 Finding B (`15.2`) & Section `15.11` — Reference-vs-Behavior Traceability & Coverage State Model
+### 2.2 Finding B (`15.2`), Section `15.11` & Pre-Gate Fix (`16.3`) — Reference-vs-Behavior Traceability, No-Case Semantics & Coverage State Model
 
-`compute_invariant_coverage()` in [`.claude/skills/skill-evaluation-harness/scripts/run_suite.py`](../skills/skill-evaluation-harness/scripts/run_suite.py) now tracks all **63 normative rules** (`55` primary + `8` sub-invariants) across the 7-layer chain:
+`compute_invariant_coverage()` in [`.claude/skills/skill-evaluation-harness/scripts/run_suite.py`](../skills/skill-evaluation-harness/scripts/run_suite.py) resolves every rule's behavioral cases from both `corpus["cases"]` and `.claude/skills/_shared/aif/tests/cases.yaml` (`invariant_coverage_index`) across all **63 normative rules** (`55` primary + `8` sub-invariants) and evaluates the 8-layer chain:
 
 ```text
 Invariant
    ├── Definition
    ├── Schema
+   ├── Reference
    ├── Structural test
    ├── Behavioral test
-   ├── Adversarial mutation
+   ├── Mutation sensitivity / Adversarial mutation
    ├── Oracle
    └── Evidence
 ```
@@ -83,9 +84,32 @@ with explicit non-numerical states:
 - **Connection Status**: `REFERENCE_PRESENT` vs `BEHAVIORALLY_CONNECTED` (or `MISSING`)
 - **Coverage State**: `MISSING | REFERENCE_ONLY | STRUCTURAL | BEHAVIORAL | ADVERSARIAL | VERIFIED` (no numerical score).
 
-Furthermore, `EVAL-11` in `run_suite.py --self-test` verifies both:
-1. All `63/63` rules are `BEHAVIORALLY_CONNECTED` and `VERIFIED`, and
-2. Simulating a disconnected behavioral mutator (`simulated_disconnected_invariants={"AIF-049"}`) while leaving all textual ID references intact immediately downgrades `AIF-049` from `BEHAVIORALLY_CONNECTED` (`VERIFIED`) to `REFERENCE_PRESENT` (`REFERENCE_ONLY`).
+**Pre-Gate Fix (`16.3` — No-Case Handling)**:
+`compute_invariant_coverage()` strictly enforces:
+```text
+no behavioral case
+  -> exercised = False
+  -> detected = False
+  -> connection_status = REFERENCE_PRESENT
+  -> coverage_state = REFERENCE_ONLY
+```
+It never encodes `else: exercised = True; detected = True`. `EVAL-11` in `run_suite.py --self-test` verifies three properties:
+1. All `63/63` rules resolve to non-empty executed behavioral cases (`bool(ic["cases"]) is True`) and achieve `BEHAVIORALLY_CONNECTED` + `VERIFIED`;
+2. Simulating a disconnected behavioral mutator (`simulated_disconnected_invariants={"AIF-049"}`) downgrades `AIF-049` to `REFERENCE_PRESENT` (`REFERENCE_ONLY`);
+3. Simulating an invariant with no behavioral cases (`simulated_no_case_invariants={"AIF-001"}`) produces `cases = []`, `exercised = False`, `detected = False`, `connection_status = "REFERENCE_PRESENT"`, and `coverage_state = "REFERENCE_ONLY"`.
+
+---
+
+### 2.2.1 Pre-Gate Distinction (`16.4`) — Explicit `AIF-052` Replay Evidence Levels
+
+To avoid hiding distinct determinism properties behind a single `AIF-052 = VERIFIED` label, `verify_replay_determinism()` in [`run_suite.py`](../skills/skill-evaluation-harness/scripts/run_suite.py) and `EVAL-A052` explicitly separate and test:
+
+| `AIF-052` Sub-Property (`16.4`) | Mechanism in `run_suite.py` / `run_case.py` | Evidence Level |
+|---|---|---|
+| **Canonicalization removes ordering & timestamp differences** | `R1 = evaluate(shuffle_seed=None)` vs `R2 = evaluate(shuffle_seed=42, generated_at="2026-09-30T23:59:59Z")` $\to$ `canonical(R1) == canonical(R2)` | `VERIFIED` |
+| **Replay comparison detects changed result** | `verify_replay_determinism(inject_nondeterminism=True)` perturbs `R2` $\to$ `NON_REPRODUCIBLE (AIF-052)` | `VERIFIED` |
+| **Replay detects an actual nondeterministic evaluator implementation** | `verify_replay_determinism(nondeterministic_evaluator=True)` runs two independent evaluations under `mutation_mode="NONDETERMINISTIC_EVALUATOR"` in `run_case.py` (without post-run manual perturbation) $\to$ `NON_REPRODUCIBLE (AIF-052)` | `VERIFIED` |
+| **Evaluator is deterministic under repeated independent execution** | Fresh multi-run release verification bound to frozen release candidate SHA | `PENDING Phase 16 Release Evidence` |
 
 ---
 
@@ -210,14 +234,27 @@ Every one of the **63 normative rules** (`55` primary invariants + `8` sub-invar
 
 ---
 
-## 5. Gate Status Summary
+## 5. Ordered Branch Commit Lineage & Gate Status Summary
+
+### 5.1 Ordered Commit Lineage on `arena/01a0ecca-atsas`
+
+| Commit SHA | Phase / Scope | Description |
+|---|---|---|
+| `15f7fa01778f06821d1c5c9c285bb0d666e04f8b` | Phase 12 (Historical Baseline) | Initial branch base commit (`Document Class: HISTORICAL` in Phase 12 audit) |
+| `a999efa2155577fcc3c77fa03dbab5b0403a31b7` | Phase 13 / 14 | Normalized 63-rule consistency & fresh execution snapshot |
+| `059856dfba9bebee291c360e1d18f1621b3f724a` | Phase 13 / 14 | Recorded Phase 13/14 normalized audit commit |
+| `7dbd895b684e94e2396a423cac88ffda01bb4a1f` | Phase 15 / 15.1 (Step 1) | Initial implementation of `EVAL-A049..A055`, structured state mutators (`AIF-034..055`), and 3-tier `run-tests.sh` separation |
+| `3bb594098af5ac216c8be0ae7e364a48d6133bb0` | Phase 15.2 / 15.11 (Step 2) | 63-rule `REFERENCE_PRESENT` vs `BEHAVIORALLY_CONNECTED` & coverage state matrix |
+| `e9cd47f24c615f199d7f61150a42d8e05efecad3` | Phase 15.1.1–15.1.12 (Step 3) | Two-stage `Known-good -> PASS -> Controlled defect -> DETECTED` model & 4-binding baseline tamper checks |
+
+### 5.2 Gate Status Summary (Phase 16.1 Not Started per Instruction)
 
 ```text
-Phase 13    NORMALIZATION            VERIFIED
-Phase 14    EXECUTION                VERIFIED
-Phase 15.1  ATTACK CORPUS DESIGN     DEFINED  (EVAL-A049..EVAL-A055)
-Phase 15.2  ATTACK IMPLEMENTATION    VERIFIED (Known-good -> PASS -> Controlled defect -> DETECTED)
-Phase 15.3  FRESH EXECUTION          VERIFIED (7/7 evaluator attacks detected; 153/153 kernel & RED suite; 121/121 runner checks)
-Phase 15.4  GAP REASSESSMENT         VERIFIED (63/63 rules BEHAVIORALLY_CONNECTED & VERIFIED)
-Phase 16    RELEASE GATE             READY FOR EVALUATION
+Phase 13    NORMALIZATION                        VERIFIED
+Phase 14    EXECUTION                            VERIFIED
+Phase 15.1  ATTACK CORPUS DESIGN                 DEFINED  (EVAL-A049..EVAL-A055)
+Phase 15.2  ATTACK IMPLEMENTATION                VERIFIED (Known-good -> PASS -> Controlled defect -> DETECTED)
+Phase 15.3  FRESH EXECUTION                      VERIFIED (7/7 evaluator attacks detected; 153/153 kernel & RED suite; 121/121 runner checks)
+Phase 15.4  GAP REASSESSMENT (incl. 16.3 & 16.4)  VERIFIED (no-case -> exercised=False/REFERENCE_ONLY; AIF-052 evidence levels explicit)
+Phase 16    RELEASE GATE (Phase 16.1)            NOT STARTED / HOLD (awaiting user go-ahead for Phase 16.1)
 ```
