@@ -1,7 +1,7 @@
-# AIF-0.1 Deterministic Test Oracle (`tests/oracle.md`)
+# AIF-0.1.0 Deterministic Test Oracle (`tests/oracle.md`)
 
 - **Protocol Version**: `0.1.0` ([`../VERSION`](../VERSION))
-- **Behavioral Corpus**: [`cases.yaml`](./cases.yaml) (`36 RED + 8 PRESSURE = 44 cases`)
+- **Behavioral Corpus**: [`cases.yaml`](./cases.yaml) (`41 RED + 8 PRESSURE = 49 cases`)
 
 ---
 

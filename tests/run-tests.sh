@@ -82,7 +82,7 @@ check_rejection "examples/invalid-skill-as-evidence.json" "AIF-INV-008"
 echo ""
 echo "=== 4. Validating Bundled ATSAS Agent Skills (.claude/skills/) ==="
 if python3 .claude/skills/skill-creator/scripts/validate_skill.py --all .claude/skills > /dev/null; then
-  pass "All 14 imported Agent Skills in .claude/skills/ pass validate_skill.py (including SCOPE checks)"
+  pass "All 22 Agent Skills in .claude/skills/ (14 imported + 8 Wave-1 AIF skills) pass validate_skill.py (including SCOPE checks)"
 else
   fail ".claude/skills/ failed validate_skill.py"
 fi
@@ -120,6 +120,7 @@ for assurance_doc in \
   .claude/assurance/canonical-data-model.md \
   .claude/assurance/semantic-kernel-layout-review.md \
   .claude/assurance/phase12-interface-freeze-audit.md \
+  .claude/assurance/phase13-consistency-normalization-audit.md \
   ARENA_CAPABILITY_OVERLAP_MATRIX.md \
   ARENA_AIF_V01_FREEZE_REVIEW.md \
   ARENA_CANONICAL_DATA_MODEL.md \
@@ -324,11 +325,17 @@ for failure_code in \
 done
 
 echo ""
-echo "=== 6. Running Phase 2/3 AIF-0.1.0 Kernel, 44-Case RED Suite & arena-intake-and-authority Tests ==="
+echo "=== 6. Running Canonical AIF-0.1.0 Kernel, 49-Case RED/Pressure Suite & Wave-1 (C-01..C-08) Self-Tests ==="
 if python3 tests/aif-v01-red-suite.py > /dev/null; then
-  pass "Phase 2 AIF-0.1.0 minimal kernel, First RED Gate & 44 behavioral cases (tests/aif-v01-red-suite.py) passed"
+  pass "Canonical AIF-0.1.0 minimal kernel, First RED Gate, 63 invariant rules (AIF-001..055) & 49 behavioral cases (tests/aif-v01-red-suite.py) passed"
 else
-  fail "Phase 2 AIF-0.1.0 RED test suite failed"
+  fail "Canonical AIF-0.1.0 RED test suite failed"
+fi
+
+if ./.agent/tools/aif-red-suite > /dev/null; then
+  pass "Phase 13 upgraded .agent/tools/aif-red-suite wrapper verified (VERSION == 0.1.0 & delegates to canonical tests/aif-v01-red-suite.py)"
+else
+  fail ".agent/tools/aif-red-suite wrapper failed"
 fi
 
 if python3 .claude/skills/arena-intake-and-authority/scripts/evaluate_intake.py --self-test > /dev/null; then
@@ -377,6 +384,33 @@ if python3 .claude/skills/skill-evaluation-harness/scripts/run_suite.py --self-t
   pass "Phase 11 & 12 skill-evaluation-harness 13-case meta-assurance & interface freeze test suite (EVAL-01..13, AIF-049..055) passed"
 else
   fail "Phase 11 & 12 skill-evaluation-harness test suite failed"
+fi
+
+if python3 - <<'PY'
+from pathlib import Path
+
+assert Path(".claude/skills/_shared/aif/VERSION").read_text(encoding="utf-8").strip() == "0.1.0"
+assert Path(".agent/skills/_shared/aif/VERSION").read_text(encoding="utf-8").strip() == "0.1.0"
+
+cases_hdr = Path(".claude/skills/_shared/aif/tests/cases.yaml").read_text(encoding="utf-8")[:300]
+assert "49-Case" in cases_hdr and "41 RED + 8 PRESSURE" in cases_hdr, "Stale header in cases.yaml"
+
+oracle_txt = Path(".claude/skills/_shared/aif/tests/oracle.md").read_text(encoding="utf-8")
+assert "41 RED + 8 PRESSURE = 49 cases" in oracle_txt, "Stale corpus count in oracle.md"
+
+tests_readme = Path(".claude/skills/_shared/aif/tests/README.md").read_text(encoding="utf-8")
+assert "55-Invariant Coverage Matrix" in tests_readme and "AIF-055" in tests_readme, "Stale invariant count in tests/README.md"
+
+root_readme = Path("README.md").read_text(encoding="utf-8")
+skills_readme = Path(".claude/skills/README.md").read_text(encoding="utf-8")
+for skill_dir in sorted(p.name for p in Path(".claude/skills").iterdir() if p.is_dir() and not p.name.startswith("_")):
+    assert skill_dir in root_readme, f"Missing {skill_dir} in README.md"
+    assert skill_dir in skills_readme, f"Missing {skill_dir} in .claude/skills/README.md"
+PY
+then
+  pass "Phase 13 consistency & normalization audit verified (VERSION=0.1.0, 55 invariants AIF-001..055, 49 cases in cases.yaml, 22 skills indexed)"
+else
+  fail "Phase 13 consistency & normalization audit failed"
 fi
 
 echo ""

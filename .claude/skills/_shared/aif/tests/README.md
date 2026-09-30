@@ -1,14 +1,14 @@
-# AIF-0.1 Behavioral Test Corpus (`tests/README.md`)
+# AIF-0.1.0 Behavioral Test Corpus (`tests/README.md`)
 
 - **Protocol Version**: `0.1.0` ([`../VERSION`](../VERSION))
-- **Corpus File**: [`cases.yaml`](./cases.yaml) (`36 RED + 8 PRESSURE = 44 cases`, plus `first_red_gate`)
+- **Corpus File**: [`cases.yaml`](./cases.yaml) (`41 RED + 8 PRESSURE = 49 cases`, plus `first_red_gate`)
 - **Oracle Specification**: [`oracle.md`](./oracle.md)
 
 ---
 
 ## 1. Three Levels of Testing
 
-The 44 behavioral cases in [`cases.yaml`](./cases.yaml) are evaluated across three distinct test classes so that an integration failure is never misdiagnosed as a semantic kernel failure:
+The 49 behavioral cases in [`cases.yaml`](./cases.yaml) are evaluated across three distinct test classes so that an integration failure is never misdiagnosed as a semantic kernel failure:
 
 ```text
              AIF-0.1
@@ -32,7 +32,7 @@ The 44 behavioral cases in [`cases.yaml`](./cases.yaml) are evaluated across thr
 
 ---
 
-## 2. 20-Invariant Coverage Matrix (`36 RED + 8 PRESSURE = 44 Cases`)
+## 2. 55-Invariant Coverage Matrix (`AIF-001` .. `AIF-055`, `41 RED + 8 PRESSURE = 49 Cases`)
 
 | Invariant | Rule Summary | RED Case(s) | Pressure Case(s) | Integration |
 |---|---|---|---|---|
@@ -84,6 +84,14 @@ The 44 behavioral cases in [`cases.yaml`](./cases.yaml) are evaluated across thr
 | `AIF-046` | Contradiction Preservation (`E1..E3` retained with `CONTRADICTED`) | `RED-014`, `RED-035`, `RECEIPT-04` | `P-REC-05` | yes |
 | `AIF-047` | Historical Snapshot Preservation (evidence retains capture snapshot) | `RECEIPT-02`, `RECEIPT-10` | `P-REC-04` | yes |
 | `AIF-048` | Completion Separation (receipt generator cannot authorize, admit, or complete) | `RECEIPT-06` | `P-REC-03` | yes |
+| `AIF-049` | Test Execution Evidence (evaluation case cannot pass without observed execution) | `RED-022`, `EVAL-01`, `EVAL-06` | `P-TEST-01` | yes |
+| `AIF-050` | Oracle Independence (oracle never derives expected truth from skill output) | `EVAL-07` | — | yes |
+| `AIF-051` | Corpus Integrity (results bound to `case_corpus_digest` and `oracle_digest`) | `EVAL-01`, `EVAL-09` | — | yes |
+| `AIF-052` | Regression Reproducibility (same snapshot + corpus + oracle + evaluator $\Rightarrow$ equivalent result) | `EVAL-09` | — | yes |
+| `AIF-053` | Mutation Sensitivity (critical invariant suite detects contract-breaking mutations) | `RED-020`, `RED-028`, `RED-041`, `TEST-07`, `COMPLETE-06`, `EVAL-10` | — | yes |
+| `AIF-054` | Trigger Correctness (`SHOULD TRIGGER` vs `SHOULD NOT TRIGGER` & trigger pressure) | `EVAL-12` | — | yes |
+| `AIF-055` | Test Non-Vacuity (`PASS` requires `execution_occurred + observation_produced + oracle_matched`) | `EVAL-06` | — | yes |
+
 
 
 

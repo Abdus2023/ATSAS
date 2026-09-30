@@ -58,7 +58,7 @@ This directory packages **every end-to-end engineering process used from the fir
 │   ├── aif-exec-record                                # ExecutionRecord wrapper (PROCESS/TEST/SEMANTIC)
 │   ├── aif-coverage-eval                              # EvidenceCoverage(E,C) & Intersects(Change,Claim) CLI
 │   ├── aif-completion-eval                            # Pure-function CompletionResult gate evaluator CLI
-│   ├── aif-red-suite                                  # Phase 0/1 28-case RED invariant suite runner
+│   ├── aif-red-suite                                  # Canonical AIF-0.1.0 RED suite wrapper (delegates to tests/aif-v01-red-suite.py)
 │   └── contracts/                                     # 7 ATSAS Tool Capability Contracts (Draft 2020-12)
 │       ├── aif-verify.tool.json
 │       ├── aif-snapshot-capture.tool.json
@@ -69,8 +69,8 @@ This directory packages **every end-to-end engineering process used from the fir
 │       └── aif-red-suite.tool.json
 └── skills/                                            # 9 Reusable Agent Skills + Shared AIF Kernel
     ├── _shared/
-    │   └── aif/                                       # Versioned AIF-0.1 Semantic Kernel (non-skill)
-    │       ├── VERSION                                # 0.1
+    │   └── aif/                                       # Versioned AIF-0.1.0 Semantic Kernel (non-skill)
+    │       ├── VERSION                                # 0.1.0
     │       ├── README.md
     │       ├── invariants.md
     │       ├── states.md

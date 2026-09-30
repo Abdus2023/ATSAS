@@ -33,13 +33,16 @@ Completion gate:
 .claude/skills/_shared/aif/
 ├── VERSION                                    # 0.1.0
 ├── README.md                                  # Kernel boundary & division of responsibilities
-├── invariants.md                              # 20 normative invariants (AIF-001 .. AIF-020)
-├── states.md                                  # Authority, Execution, Verification, Observation & Completion tables
-├── snapshots.md                               # SnapshotRef contract (history vs. working state) & attribution
+├── invariants.md                              # 55 primary invariants (AIF-001 .. AIF-055) + 8 sub-invariants (63 rules)
+├── states.md                                  # Orthogonal state dimensions (Authority, Admission, Execution, Evidence, Verification, Completion)
+├── snapshots.md                               # 5-snapshot contract (comparison_base, intake, execution, verification, current) & dirty-tree attribution
 ├── evidence.md                                # EvidenceRef, narrow Claim, AcceptanceExpression & Receipt immutability
 ├── compatibility.md                           # SemVer rules & skill compatibility contract
 │
-├── schema/                                    # 13 compact Draft 2020-12 JSON Schemas
+├── producers/                                 # 10 declarative EvidenceProducerOutput adapter contracts + README.md
+│
+├── schema/                                    # 13 modular Draft 2020-12 JSON Schemas (encoding the 14 core Semantic Kernel types;
+│   │                                          #   common.schema.json defines $defs/EvidenceCoverage & $defs/Finding + 12 type schemas)
 │   ├── common.schema.json
 │   ├── request.schema.json
 │   ├── authority-event.schema.json
@@ -54,7 +57,7 @@ Completion gate:
 │   ├── completion-result.schema.json
 │   └── evidence-receipt.schema.json
 │
-└── tests/                                     # 44-case behavioral specification & deterministic test oracle
+└── tests/                                     # 49-case (41 RED + 8 PRESSURE) behavioral specification & deterministic test oracle
     ├── cases.yaml
     ├── oracle.md
     └── README.md

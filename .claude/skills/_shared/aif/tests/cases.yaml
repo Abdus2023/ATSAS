@@ -1,7 +1,7 @@
 # .claude/skills/_shared/aif/tests/cases.yaml
-# AIF-0.1.0 Canonical 44-Case Behavioral Specification (36 RED + 8 PRESSURE) & First RED Gate
+# AIF-0.1.0 Canonical 49-Case Behavioral Specification (41 RED + 8 PRESSURE) & First RED Gate
 aif_version: "0.1.0"
-description: "AIF-0.1 44-case behavioral test specification (36 RED + 8 PRESSURE) and First RED Gate."
+description: "AIF-0.1.0 49-case behavioral test specification (41 RED + 8 PRESSURE) and First RED Gate."
 
 first_red_gate:
   gate_id: FIRST-RED-GATE

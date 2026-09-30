@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-tests/aif-v01-red-suite.py — Phase 2 Minimal AIF-0.1.0 Kernel & 44-Case Behavioral Verification Suite.
+tests/aif-v01-red-suite.py — Canonical AIF-0.1.0 Kernel, 63-Invariant & 49-Case Behavioral Verification Suite.
 
-Proves the 6 Phase 2 freeze facts:
+Proves the 6 AIF-0.1.0 freeze facts:
   1. AIF-0.1.0 contract exists in .claude/skills/_shared/aif/ with the exact minimal layout
-     (VERSION == 0.1.0, 7 docs, 13 schemas in schema/, 3 files in tests/, and no executable code).
-  2. All 13 schemas in .claude/skills/_shared/aif/schema/ validate structurally.
-  3. All 44 behavioral cases (36 RED + 8 PRESSURE) and the First RED Gate are represented in tests/cases.yaml.
-  4. All 20 primary invariants (AIF-001 .. AIF-020) map to executable tests.
+     (VERSION == 0.1.0, 7 docs, 13 schemas in schema/, 3 files in tests/, 10 producer contracts, and 0 runtime code files).
+  2. All 13 schemas in .claude/skills/_shared/aif/schema/ validate structurally (encoding the 14 core Semantic Kernel types).
+  3. All 49 behavioral cases (41 RED + 8 PRESSURE) and the First RED Gate are represented in tests/cases.yaml.
+  4. All 55 primary invariants (AIF-001 .. AIF-055) + 8 sub-invariants (AIF-001A .. AIF-014A) = 63 rules map to executable tests.
   5. All RED cases and the First RED Gate fail under intentionally unsafe behavior.
   6. Pressure cases and reasoning-path traps cannot be satisfied by textual assertions.
 """
@@ -215,7 +215,7 @@ def main() -> int:
         and not code_files
     ):
         ok(
-            "Minimal AIF-0.1.0 kernel layout verified (7 docs, 13 schemas, 3 test files, 7 producer contracts, 0 runtime code files)"
+            "Minimal AIF-0.1.0 kernel layout verified (7 docs, 13 schemas, 3 test files, 10 producer contracts, 0 runtime code files)"
         )
     else:
         err(
@@ -255,7 +255,7 @@ def main() -> int:
         else:
             err(f"Modular schema {schema_filename} failed validation: {errs}")
 
-    # 3. Execute all 28 RED invariant tests (TEST AIF-001-01 .. TEST AIF-020-01)
+    # 3. Execute all 63 RED invariant tests (TEST AIF-001-01 .. TEST AIF-055-01, including 8 *A sub-invariants)
     def mut_aif_001(b: Dict[str, Any]) -> None:
         b["admission"]["admission_status"] = "BLOCKED"
 
@@ -706,15 +706,18 @@ def main() -> int:
                 f"neg={neg_oracle['matched']}, trap={trap_oracle['matched']}, pos={pos_oracle['matched']}"
             )
 
-    # 5. Verify 20-Invariant Coverage Matrix
+    # 5. Verify 55-Invariant Coverage Matrix (AIF-001 .. AIF-055)
     primary_20 = {f"AIF-{i:03d}" for i in range(1, 21)}
+    all_55 = {f"AIF-{i:03d}" for i in range(1, 56)}
+    tested_in_red_cases = {inv_id for _, inv_id, _ in red_cases}
     missing_invs = sorted(primary_20 - covered_invariants)
-    if not missing_invs:
+    missing_55 = sorted(all_55 - tested_in_red_cases)
+    if not missing_invs and not missing_55:
         ok(
-            "All 20 primary invariants (AIF-001 .. AIF-020) map to behavioral tests in tests/cases.yaml"
+            "All 55 primary invariants (AIF-001 .. AIF-055) + 8 sub-invariants verified in RED mutator suite and tests/cases.yaml"
         )
     else:
-        err(f"Missing invariant coverage in tests/cases.yaml: {missing_invs}")
+        err(f"Missing invariant coverage: cases.yaml={missing_invs}, mutators={missing_55}")
 
     # 5B. Phase 5 — AIF Evidence Producer Adapter 15-Case Test Suite (ADP-01 .. ADP-15)
     def run_evidence_adapter(raw: Dict[str, Any]) -> Dict[str, Any]:

@@ -1,7 +1,7 @@
 {
   "tool_id": "aif-red-suite",
   "version": "0.1.0",
-  "description": "Executable Phase 0/1 RED invariant & modular schema test suite runner for AIF-0.1 (TEST AIF-001-01 .. TEST AIF-020-01).",
+  "description": "Canonical AIF-0.1.0 RED invariant & 49-case behavioral test suite wrapper delegating to tests/aif-v01-red-suite.py (AIF-001..AIF-055).",
   "capability_class": "READ_ONLY",
   "side_effects": {
     "mutates_repository": false,

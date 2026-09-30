@@ -155,25 +155,37 @@ ATSAS/
 ├── ARENA_AIF_V01_FREEZE_REVIEW.md             # Adversarial Freeze Review of AIF-001..020 (+A) & C-01..C-08
 ├── ARENA_CANONICAL_DATA_MODEL.md              # Canonical Data Model v0.1 (14-Type Semantic Kernel)
 ├── ARENA_SEMANTIC_KERNEL_LAYOUT_REVIEW.md     # Semantic Kernel Layout, Ownership & Versioning Freeze Review
-├── .agent/                                    # Reusable ATSAS Tools, AIF-0.1 Protocol Kernel & Process Skills
+├── ARENA_PHASE12_INTERFACE_FREEZE_AND_BRANCH_AUDIT.md # Phase 12 Ownership Freeze & Phase 13/14 Consistency Audit
+├── .agent/                                    # Phase 0/1 Engineering Process Archive & CLI Wrappers
 │   ├── README.md                              # End-to-end process pipeline & quickstart for .agent/
-│   ├── tools/                                 # Zero-dependency CLI tools + ATSAS Tool contracts
-│   └── skills/                                # 7 process skills + _shared/aif/ protocol kernel
+│   ├── tools/                                 # Zero-dependency CLI wrappers (aif-red-suite delegates to tests/aif-v01-red-suite.py)
+│   └── skills/                                # 9 meta-engineering process skills + _shared/aif/ (VERSION = 0.1.0)
 ├── .claude/
-│   ├── assurance/                             # Canonical executable assurance design artifacts
+│   ├── assurance/                             # Canonical executable assurance design & audit artifacts
 │   │   ├── invariants.md                      # 11 Arena Assurance Invariants (AAI-001..AAI-011)
-│   │   ├── test-matrix.md                     # 42-case Behavioral & Pressure Test Matrix v0.1
-│   │   ├── state-model.md                     # 6-stage pipeline, state machine & 4-axis vocabulary
-│   │   ├── evidence-schema.md                 # 3-snapshot ArenaEvidenceReceipt & SkillEvalReceipt
+│   │   ├── test-matrix.md                     # Historical Phase 0/1 Test Matrix (expanded to 49 cases in _shared/aif/tests/cases.yaml)
+│   │   ├── state-model.md                     # 6-stage pipeline, state machine & orthogonal dimensions
+│   │   ├── evidence-schema.md                 # 5-snapshot ArenaEvidenceReceipt & SkillEvalReceipt
 │   │   ├── capability-map.md                  # Capability-by-capability audit of .claude/skills/
 │   │   ├── component-contracts.md             # v0.1 Normative Interface Contracts (C-01..C-08)
-│   │   ├── aif-v01-freeze-review.md           # 20-Invariant (+8 Sub-Invariant) Adversarial Freeze Review
-│   │   ├── canonical-data-model.md            # Canonical Data Model v0.1 (14-Type Semantic Kernel)
-│   │   └── semantic-kernel-layout-review.md   # Semantic Kernel Layout, Ownership & Versioning Freeze Review
-│   └── skills/                                # Bundled ATSAS Agent Skills library (14 imported skills)
-│       ├── README.md                          # Skills index, provenance, and quickstart
+│   │   ├── aif-v01-freeze-review.md           # Adversarial Freeze Review of C-01..C-08
+│   │   ├── canonical-data-model.md            # Canonical Data Model v0.1 (14 Core Types across 13 Modular Schemas)
+│   │   ├── semantic-kernel-layout-review.md   # Semantic Kernel Layout, Ownership & Versioning Freeze Review
+│   │   ├── phase12-interface-freeze-audit.md  # Phase 12 Cross-Skill Ownership & Interface Freeze Boundary
+│   │   └── phase13-consistency-normalization-audit.md # Phase 13 & 14 Consistency, Normalization & Execution Verification Report
+│   └── skills/                                # Canonical ATSAS Agent Skills library (22 skills + _shared/aif/ kernel)
+│       ├── README.md                          # Skills index (14 imported + 8 Wave-1 AIF skills), provenance & quickstart
+│       ├── _shared/aif/                       # Non-skill AIF-0.1.0 Semantic Kernel (55 invariants AIF-001..055 + 8 *A, 13 schemas, 10 producers, 49 cases)
+│       ├── arena-intake-and-authority/        # Wave-1 (C-01): Authority & admission owner
+│       ├── agent-change-scope-audit/          # Wave-1 (C-02): Change attribution & scope producer
+│       ├── dependency-supply-chain-audit/     # Wave-1 (C-03): Dependency supply-chain provenance producer
+│       ├── ci-workflow-audit/                 # Wave-1 (C-04): CI configuration & execution evidence producer
+│       ├── test-execution-and-evidence-audit/ # Wave-1 (C-05): Test execution & coverage evidence producer
+│       ├── evidence-receipt-generator/        # Wave-1 (C-06): RFC 8785 JCS SHA-256 ArenaEvidenceReceipt assembler
+│       ├── arena-completion-gate/             # Wave-1 (C-07): Pure completion gate evaluator (completion owner)
+│       ├── skill-evaluation-harness/          # Wave-1 (C-08): 4-level Oracle & 79-case behavioral evaluation harness
 │       ├── adr-writer/                        # Architecture Decision Record & ledger authoring
-│       ├── authorization-boundary-scan/       # Compliance & authorization boundary scanner
+│       ├── authorization-boundary-scan/       # Compliance & content authorization boundary scanner
 │       ├── contract-freeze-gate/              # Documentation audit & freeze-gate evaluator
 │       ├── contract-implementation-sync/      # Contract-to-code field-for-field parity checker
 │       ├── contract-normalization-pass/       # End-to-end contract normalization orchestrator
@@ -185,7 +197,7 @@ ATSAS/
 │       ├── repo-onboarding-audit/             # AGENTS.md / CLAUDE.md onboarding auditor
 │       ├── secret-leak-scan/                  # Zero-dependency hardcoded credential scanner
 │       ├── session-git-sync-check/            # Sandbox git checkout vs. remote branch verifier
-│       └── skill-creator/                     # Agent Skills generator & spec validator
+│       └── skill-creator/                     # Agent Skills generator & structural spec validator
 ├── spec/                                      # Formal specifications
 │   ├── 00-overview.md                         # Architectural overview & boundary axioms
 │   ├── 01-atsas-architecture.md               # ATSAS: Tools, Skills, Agentic System & Governance
@@ -221,41 +233,48 @@ ATSAS/
 │   ├── invalid-partial-observability.json     # Rejected: PARTIAL / NOT_OBSERVABLE criteria
 │   └── invalid-skill-as-evidence.json         # Rejected: skill invocation claimed without evidence
 ├── bin/
-│   └── aif-verify                             # Reference invariant & schema validator CLI
+│   └── aif-verify                             # Reference invariant (AIF-001..055) & schema validator CLI
 └── tests/
-    └── run-tests.sh                           # Automated test suite for schemas, skills & invariants
+    ├── aif-v01-red-suite.py                   # Canonical AIF-0.1.0 kernel, 63-invariant & 49-case behavioral suite
+    └── run-tests.sh                           # Single canonical repository test entrypoint
 ```
 
 ---
 
 ## Bundled ATSAS Skills Library (`.claude/skills/`)
 
-`.claude/skills/` currently contains the 14 [Agent Skills](https://agentskills.io/specification) imported from `Abdus2023/streamforge-stremio` (`arena/01a0e9bd-streamforge-stremio`), each annotated with its explicit portability scope (`SCOPE: ARENA_GENERIC`, plus `ADAPTATION: STREAMFORGE` where applicable) under the **"Location is not scope"** governance rule.
+`.claude/skills/` contains **22 validated Agent Skills** (`14` skills imported from `Abdus2023/streamforge-stremio` + `8` Wave-1 AIF-0.1.0 components `C-01`..`C-08`) plus the non-skill shared semantic kernel [`.claude/skills/_shared/aif/`](./.claude/skills/_shared/aif/) (`VERSION = 0.1.0`, `55` primary invariants `AIF-001`..`AIF-055` + `8` sub-invariants = `63` rules, `13` modular JSON Schemas encoding the `14` core Semantic Kernel types, `10` producer adapter contracts, and the `49`-case `cases.yaml` behavioral specification).
 
-The 8 **Wave-1 Repository Assurance Skills** (`01 arena-intake-and-authority`, `02 agent-change-scope-audit`, `03 secret-and-credential-audit`, `04 dependency-supply-chain-audit`, `05 ci-workflow-audit`, `06 test-execution-and-evidence-audit`, `07 evidence-receipt-generator`, `08 arena-completion-gate`) are **`PROVISIONALLY FROZEN — interface level`** in [`spec/06-wave1-skill-interfaces.md`](./spec/06-wave1-skill-interfaces.md) with their pre-`SKILL.md` behavioral test cases in [`spec/07-wave1-red-pressure-matrix.md`](./spec/07-wave1-red-pressure-matrix.md):
-
-| Skill | Scope / Adaptation | Category | Bundled Scripts / Assets |
+| Skill | Scope / Adaptation | Role / Layer | Bundled Scripts / Assets |
 | :--- | :--- | :--- | :--- |
+| [`arena-intake-and-authority`](./.claude/skills/arena-intake-and-authority/) | `ARENA_GENERIC` | `C-01` Authority & Admission Owner | `scripts/evaluate_intake.py` (`14/14` tests) |
+| [`agent-change-scope-audit`](./.claude/skills/agent-change-scope-audit/) | `ARENA_GENERIC` | `C-02` Change Attribution & Scope Producer | `scripts/audit_change_scope.py` (`9/9` tests) |
+| [`dependency-supply-chain-audit`](./.claude/skills/dependency-supply-chain-audit/) | `ARENA_GENERIC` | `C-03` Dependency Provenance Producer | `scripts/audit_supply_chain.py` (`16/16` tests) |
+| [`ci-workflow-audit`](./.claude/skills/ci-workflow-audit/) | `ARENA_GENERIC` | `C-04` CI Configuration & Run Evidence Producer | `scripts/audit_ci_workflow.py` (`21/21` tests) |
+| [`test-execution-and-evidence-audit`](./.claude/skills/test-execution-and-evidence-audit/) | `ARENA_GENERIC` | `C-05` Test Execution & Coverage Evidence Producer | `scripts/audit_test_execution.py` (`27/27` tests) |
+| [`evidence-receipt-generator`](./.claude/skills/evidence-receipt-generator/) | `ARENA_GENERIC` | `C-06` RFC 8785 JCS SHA-256 Receipt Assembler | `scripts/generate_receipt.py`, `validate_receipt.py`, `canonicalize_receipt.py` (`19/19` tests) |
+| [`arena-completion-gate`](./.claude/skills/arena-completion-gate/) | `ARENA_GENERIC` | `C-07` Pure Completion Gate Evaluator (Completion Owner) | `scripts/evaluate_completion.py`, `validate_completion_result.py` (`22/22` tests) |
+| [`skill-evaluation-harness`](./.claude/skills/skill-evaluation-harness/) | `ARENA_GENERIC` | `C-08` 4-Level Oracle & Skill Behavior Evaluator | `scripts/discover_cases.py`, `run_case.py`, `run_suite.py`, `compare_result.py`, `generate_report.py` (`13/13` tests, `79` corpus cases) |
 | [`session-git-sync-check`](./.claude/skills/session-git-sync-check/) | `ARENA_GENERIC` | Repository Hygiene | `scripts/git_sync_check.sh` |
 | [`repo-onboarding-audit`](./.claude/skills/repo-onboarding-audit/) | `ARENA_GENERIC` | Repository Hygiene | `scripts/audit_agents_md.py` |
 | [`dependency-vulnerability-audit`](./.claude/skills/dependency-vulnerability-audit/) | `ARENA_GENERIC` | Security & Hygiene | `scripts/run_dependency_audit.sh`, `scripts/_summarize_npm_audit.py` |
 | [`secret-leak-scan`](./.claude/skills/secret-leak-scan/) | `ARENA_GENERIC` | Security & Hygiene | `scripts/scan_secrets.py` |
-| [`authorization-boundary-scan`](./.claude/skills/authorization-boundary-scan/) | `ARENA_GENERIC` (`STREAMFORGE`) | Governance & Compliance | `scripts/scan_authorization_boundary.py` |
+| [`authorization-boundary-scan`](./.claude/skills/authorization-boundary-scan/) | `ARENA_GENERIC` (`STREAMFORGE`) | Content Compliance Boundary | `scripts/scan_authorization_boundary.py` |
 | [`docs-monolith-partition`](./.claude/skills/docs-monolith-partition/) | `ARENA_GENERIC` | Contract & Docs Architecture | `assets/migration-matrix-template.md`, `references/maintenance-rules.md` |
 | [`docs-integrity-check`](./.claude/skills/docs-integrity-check/) | `ARENA_GENERIC` | Contract & Docs Verification | `scripts/check_fences.sh`, `scripts/check_links.py` |
 | [`doc-symbol-audit`](./.claude/skills/doc-symbol-audit/) | `ARENA_GENERIC` | Contract & Docs Verification | `scripts/list_declared_symbols.py`, `scripts/extract_symbol_occurrences.py` |
 | [`adr-writer`](./.claude/skills/adr-writer/) | `ARENA_GENERIC` | Decision Governance | `assets/adr-template.md`, `assets/ledger-entry-template.md`, `references/status-discipline.md` |
-| [`contract-freeze-gate`](./.claude/skills/contract-freeze-gate/) | `ARENA_GENERIC` (`STREAMFORGE`) | Assurance Gate | `assets/documentation-audit-template.md`, `references/freeze-gate-checklist.md` |
-| [`contract-implementation-sync`](./.claude/skills/contract-implementation-sync/) | `ARENA_GENERIC` (`STREAMFORGE`) | Contract-to-Code Assurance | `scripts/check_contract_parity.py` |
+| [`contract-freeze-gate`](./.claude/skills/contract-freeze-gate/) | `ARENA_GENERIC` (`STREAMFORGE`) | Documentation Freeze Gate | `assets/documentation-audit-template.md`, `references/freeze-gate-checklist.md` |
+| [`contract-implementation-sync`](./.claude/skills/contract-implementation-sync/) | `ARENA_GENERIC` (`STREAMFORGE`) | Contract-to-Code Parity | `scripts/check_contract_parity.py` |
 | [`docs-normalization-commit-plan`](./.claude/skills/docs-normalization-commit-plan/) | `ARENA_GENERIC` | Change Attribution & Git | `references/commit-ordering-checklist.md` |
-| [`contract-normalization-pass`](./.claude/skills/contract-normalization-pass/) | `ARENA_GENERIC` (`STREAMFORGE`) | Orchestration | `assets/final-report-long-template.md`, `assets/final-report-short-template.md`, `references/operating-principles.md` |
-| [`skill-creator`](./.claude/skills/skill-creator/) | `ARENA_GENERIC` | Meta-Skill & Validator | `scripts/validate_skill.py`, `references/writing-patterns.md`, `references/lessons-learned.md` |
+| [`contract-normalization-pass`](./.claude/skills/contract-normalization-pass/) | `ARENA_GENERIC` (`STREAMFORGE`) | Normalization Orchestration | `assets/final-report-long-template.md`, `assets/final-report-short-template.md`, `references/operating-principles.md` |
+| [`skill-creator`](./.claude/skills/skill-creator/) | `ARENA_GENERIC` | Skill Authoring & Structural Validator | `scripts/validate_skill.py`, `references/writing-patterns.md`, `references/lessons-learned.md` |
 
 ---
 
-## Quickstart: Validating Assurance Manifests
+## Quickstart: Canonical Verification Entrypoint
 
-The repository includes `bin/aif-verify`, a zero-dependency reference validator that checks AIF Completion Manifests against both the structural contracts (`schemas/`) and the normative AIF assurance invariants (`spec/04-invariants-and-axioms.md`).
+`./tests/run-tests.sh` is the **single canonical test entrypoint** for the repository. It validates all JSON Schemas, compliant/rejected manifests, all 22 skills in `.claude/skills/`, the `AIF-0.1.0` kernel & 49-case RED/Pressure suite (`tests/aif-v01-red-suite.py`), all `C-01`..`C-08` component self-tests, and Phase 12/13 consistency invariants.
 
 ### Validate a compliant completion manifest
 
