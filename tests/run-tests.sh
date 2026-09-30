@@ -83,10 +83,43 @@ check_rejection "examples/invalid-skill-as-evidence.json" "AIF-INV-008"
 
 echo ""
 echo "=== 4. Validating Bundled ATSAS Agent Skills (.claude/skills/) ==="
-if python3 .claude/skills/skill-creator/scripts/validate_skill.py --all .claude/skills > /dev/null; then
-  pass "All 22 Agent Skills in .claude/skills/ (14 imported + 8 Wave-1 AIF skills) pass validate_skill.py (including SCOPE checks)"
+if SKILL_INVENTORY_MSG=$(python3 - <<'PY'
+import subprocess, sys
+from pathlib import Path
+
+skills_root = Path(".claude/skills")
+discovered = sorted(
+    p.name for p in skills_root.iterdir()
+    if p.is_dir() and p.name != "_shared" and (p / "SKILL.md").is_file()
+)
+wave1_expected = {
+    "arena-intake-and-authority",
+    "agent-change-scope-audit",
+    "dependency-supply-chain-audit",
+    "ci-workflow-audit",
+    "test-execution-and-evidence-audit",
+    "evidence-receipt-generator",
+    "arena-completion-gate",
+    "skill-evaluation-harness",
+}
+wave1_found = sorted(s for s in discovered if s in wave1_expected)
+imported_found = sorted(s for s in discovered if s not in wave1_expected)
+
+assert len(discovered) == 22, f"Expected 22 discovered skills, found {len(discovered)}"
+assert len(wave1_found) == 8, f"Expected 8 AIF Wave-1 skills, found {len(wave1_found)}"
+assert len(imported_found) == 14, f"Expected 14 imported/original skills, found {len(imported_found)}"
+
+res = subprocess.run(
+    [sys.executable, ".claude/skills/skill-creator/scripts/validate_skill.py", "--all", ".claude/skills"],
+    capture_output=True, text=True
+)
+assert res.returncode == 0, res.stdout + res.stderr
+print(f"Discovered {len(discovered)} total skills ({len(imported_found)} imported/original + {len(wave1_found)} AIF Wave-1 skills); all pass validate_skill.py")
+PY
+); then
+  pass "$SKILL_INVENTORY_MSG"
 else
-  fail ".claude/skills/ failed validate_skill.py"
+  fail ".claude/skills/ dynamic inventory discovery or validate_skill.py failed"
 fi
 
 if bash .claude/skills/docs-integrity-check/scripts/check_fences.sh spec > /dev/null && \
@@ -191,10 +224,27 @@ for t_name in canonical_types:
     assert t_name in cdm_schema.get("$defs", {}), f"Missing {t_name} in schemas/aif-canonical-data-model.schema.json $defs"
 
 invariants_md = Path(".claude/skills/_shared/aif/invariants.md").read_text(encoding="utf-8")
+oracle_md = Path(".claude/skills/_shared/aif/tests/oracle.md").read_text(encoding="utf-8")
+cases_yaml = Path(".claude/skills/_shared/aif/tests/cases.yaml").read_text(encoding="utf-8")
+tests_readme = Path(".claude/skills/_shared/aif/tests/README.md").read_text(encoding="utf-8")
+aif_verify_src = Path("bin/aif-verify").read_text(encoding="utf-8")
+red_suite_src = Path("tests/aif-v01-red-suite.py").read_text(encoding="utf-8")
+
 for i in range(1, 56):
-    assert f"### `AIF-{i:03d}`" in invariants_md, f"Missing AIF-{i:03d} in .claude/skills/_shared/aif/invariants.md"
+    inv_code = f"AIF-{i:03d}"
+    assert f"### `{inv_code}`" in invariants_md, f"Missing {inv_code} in .claude/skills/_shared/aif/invariants.md"
+    assert f"`{inv_code}`" in oracle_md, f"Missing {inv_code} in .claude/skills/_shared/aif/tests/oracle.md"
+    assert inv_code in cases_yaml, f"Missing {inv_code} in .claude/skills/_shared/aif/tests/cases.yaml"
+    assert f"`{inv_code}`" in tests_readme, f"Missing {inv_code} in .claude/skills/_shared/aif/tests/README.md"
+    assert inv_code in aif_verify_src, f"Missing {inv_code} in bin/aif-verify"
+    assert inv_code in red_suite_src, f"Missing {inv_code} in tests/aif-v01-red-suite.py"
+
 for sub_id in ("AIF-001A", "AIF-002A", "AIF-003A", "AIF-004A", "AIF-005A", "AIF-006A", "AIF-008A", "AIF-014A"):
     assert f"Sub-Invariant `{sub_id}`" in invariants_md, f"Missing {sub_id} in .claude/skills/_shared/aif/invariants.md"
+    assert f"`{sub_id}`" in oracle_md, f"Missing {sub_id} in .claude/skills/_shared/aif/tests/oracle.md"
+    assert sub_id in cases_yaml, f"Missing {sub_id} in .claude/skills/_shared/aif/tests/cases.yaml"
+    assert sub_id in aif_verify_src, f"Missing {sub_id} in bin/aif-verify"
+    assert sub_id in red_suite_src, f"Missing {sub_id} in tests/aif-v01-red-suite.py"
 
 for norm_file in ("README.md", "invariants.md", "states.md", "snapshots.md", "evidence.md", "compatibility.md"):
     norm_text = Path(f".claude/skills/_shared/aif/{norm_file}").read_text(encoding="utf-8")
@@ -220,7 +270,7 @@ for hist_file in (
 ):
     hist_text = Path(hist_file).read_text(encoding="utf-8")
     assert "Document Class: HISTORICAL" in hist_text, f"Missing Document Class: HISTORICAL in {hist_file}"
-    assert "Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE" in hist_text, f"Missing HISTORICAL currentness notice in {hist_file}"
+    assert "Currentness: HISTORICAL — NOT" in hist_text, f"Missing HISTORICAL currentness notice in {hist_file}"
 PY
 then
   pass "All 14 core Semantic Kernel Types (across 13 modular schemas), 8 contracts (C-01..C-08), 55 invariants (AIF-001..055) + 8 sub-invariants, and layout review verified"

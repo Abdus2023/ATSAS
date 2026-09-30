@@ -4,12 +4,16 @@
 Document Class: HISTORICAL
 Protocol: AIF-0.1.0
 Evaluated Snapshot: 15f7fa01778f06821d1c5c9c285bb0d666e04f8b
-Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE
+Review Scope: Draft AIF v0.1
+Invariant Surface Reviewed: AIF-001..AIF-014
+Component Contracts: C-01..C-08
+Current AIF-0.1.0 invariant surface: AIF-001..AIF-055
+Currentness: HISTORICAL — NOT THE COMPLETE CURRENT INVARIANT SET (NOT CURRENT BRANCH EVIDENCE)
 ```
 
 > **Status**: `AIF v0.1 FREEZE REVIEW COMPLETE — 14 Invariants Stress-Tested, 14 Loopholes Closed`
 > **Scope**: `ARENA_GENERIC`
-> **Evaluated Surface**: Draft Interface Invariants `AIF-001` – `AIF-014` (now part of `AIF-001..AIF-055` in `AIF-0.1.0`), Component Contracts `C-01` – `C-08`, Shared `EvidenceRef`, `ArenaEvidenceReceipt`, and Forbidden Transitions `FT-01` – `FT-10`.
+> **Evaluated Surface**: Interface Invariants `AIF-001` – `AIF-014`, Component Contracts `C-01` – `C-08`, Shared `EvidenceRef`, `ArenaEvidenceReceipt`, and Forbidden Transitions `FT-01` – `FT-10`.
 
 ---
 

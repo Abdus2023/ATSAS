@@ -4,6 +4,8 @@
 Document Class: HISTORICAL
 Protocol: AIF-0.1.0
 Evaluated Snapshot: 15f7fa01778f06821d1c5c9c285bb0d666e04f8b
+Current Branch: arena/01a0ecca-atsas
+Current HEAD: ea231253dc6e2b0a04bd58282bf4f1e515c8009a
 Currentness: HISTORICAL — NOT CURRENT BRANCH EVIDENCE
 ```
 

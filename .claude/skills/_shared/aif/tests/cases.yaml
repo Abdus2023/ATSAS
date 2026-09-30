@@ -11,6 +11,18 @@ corpus:
   green_cases: 0
   total_cases: 49
 
+invariants:
+  primary: "AIF-001..AIF-055"
+  sub_invariants:
+    - AIF-001A
+    - AIF-002A
+    - AIF-003A
+    - AIF-004A
+    - AIF-005A
+    - AIF-006A
+    - AIF-008A
+    - AIF-014A
+
 invariant_range:
   primary: "AIF-001..AIF-055"
   sub_invariants:
@@ -22,6 +34,71 @@ invariant_range:
     - AIF-006A
     - AIF-008A
     - AIF-014A
+
+invariant_coverage_index:
+  AIF-001: ["RED-001", "RED-002", "RED-004", "P-08"]
+  AIF-001A: ["RED-001", "RED-004", "A-04"]
+  AIF-002: ["RED-003", "RED-005", "RED-006", "RED-008", "RED-032", "P-02", "P-04"]
+  AIF-002A: ["RED-005", "RED-008", "P-04"]
+  AIF-003: ["RED-003", "RED-005", "RED-006", "RED-007", "RED-008", "RED-032", "P-04", "P-08"]
+  AIF-003A: ["RED-006", "RED-007", "RED-037", "P-08"]
+  AIF-004: ["RED-002", "RED-018", "RED-019", "P-03"]
+  AIF-004A: ["RED-018", "RED-022", "P-03"]
+  AIF-005: ["RED-024", "RED-025", "P-03"]
+  AIF-005A: ["RED-024", "RED-025", "TEST-03"]
+  AIF-006: ["RED-022", "RED-026", "RED-029", "P-01"]
+  AIF-006A: ["RED-026", "RED-029", "P-01"]
+  AIF-007: ["RED-009", "RED-010", "RED-016", "RED-017", "RED-021", "RED-027", "RED-030", "P-06"]
+  AIF-008: ["RED-013", "RED-019", "P-03", "P-06"]
+  AIF-008A: ["RED-013", "RED-019", "P-06"]
+  AIF-009: ["RED-031", "RED-034", "P-05"]
+  AIF-010: ["RED-005", "P-02"]
+  AIF-011: ["RED-034", "P-07"]
+  AIF-012: ["RED-030", "P-06"]
+  AIF-013: ["RED-022", "RED-027", "P-01"]
+  AIF-014: ["RED-020", "RED-023", "RED-028", "RED-033", "P-04"]
+  AIF-014A: ["RED-028", "RED-033", "P-04"]
+  AIF-015: ["RED-011", "RED-028", "P-04"]
+  AIF-016: ["RED-012", "RED-030", "P-06"]
+  AIF-017: ["RED-014", "RED-015", "RED-035", "P-04"]
+  AIF-018: ["RED-022", "P-01"]
+  AIF-019: ["RED-034", "P-03", "P-05"]
+  AIF-020: ["RED-036", "P-04", "P-05", "P-07"]
+  AIF-021: ["RED-001", "RED-004", "A-04", "P-08"]
+  AIF-022: ["RED-002", "RED-003", "A-02", "P-08"]
+  AIF-023: ["RED-006", "RED-007", "RED-037", "RED-039", "RED-040", "P-04", "P-08"]
+  AIF-024: ["RED-006", "RED-038", "P-04"]
+  AIF-025: ["RED-020", "RED-028", "RED-041", "P-04"]
+  AIF-026: ["RED-012", "RED-030", "ADP-01", "ADP-10", "ADP-11", "ADP-14", "P-06"]
+  AIF-027: ["RED-022", "RED-030", "ADP-12", "P-01", "P-06"]
+  AIF-028: ["RED-020", "CI-04", "CI-05", "CI-12", "CI-13", "CI-19", "CI-20", "P-03", "P-07"]
+  AIF-029: ["RED-022", "RED-024", "RED-025", "TEST-01", "TEST-05", "P-TEST-01", "P-TEST-03"]
+  AIF-030: ["RED-026", "TEST-02", "TEST-03", "TEST-08", "TEST-19", "P-03", "P-07"]
+  AIF-031: ["RED-027", "TEST-06", "TEST-07", "P-TEST-04"]
+  AIF-032: ["RED-026", "TEST-02", "TEST-08", "TEST-09", "TEST-10", "P-01", "P-07"]
+  AIF-033: ["RED-030", "TEST-18", "TEST-19", "P-06", "P-07"]
+  AIF-034: ["RED-016", "DEP-SC-01", "DEP-SC-03", "P-DEP-05"]
+  AIF-035: ["RED-017", "DEP-SC-02", "P-03"]
+  AIF-036: ["RED-017", "DEP-SC-02", "DEP-SC-10", "P-04"]
+  AIF-037: ["RED-021", "DEP-SC-09", "DEP-SC-10", "P-04"]
+  AIF-038: ["RED-016", "DEP-SC-01", "DEP-SC-04", "DEP-SC-05", "P-DEP-01"]
+  AIF-039: ["RED-013", "DEP-SC-05", "DEP-SC-06", "DEP-SC-09", "P-03", "P-06"]
+  AIF-040: ["RED-011", "DEP-SC-10", "P-DEP-04"]
+  AIF-041: ["RED-036", "RECEIPT-10", "P-REC-07"]
+  AIF-042: ["RED-036", "RECEIPT-05", "P-REC-07"]
+  AIF-043: ["RED-009", "RECEIPT-01", "RECEIPT-07", "RECEIPT-08", "P-01"]
+  AIF-044: ["RED-022", "RECEIPT-09", "RECEIPT-12", "P-REC-01"]
+  AIF-045: ["RED-012", "RECEIPT-03", "RECEIPT-11", "P-REC-02", "P-REC-06"]
+  AIF-046: ["RED-014", "RED-035", "RECEIPT-04", "P-REC-05"]
+  AIF-047: ["RED-028", "RECEIPT-02", "RECEIPT-10", "P-REC-04"]
+  AIF-048: ["RED-031", "RECEIPT-06", "P-REC-03"]
+  AIF-049: ["RED-022", "EVAL-01", "EVAL-06", "P-TEST-01"]
+  AIF-050: ["RED-022", "EVAL-07", "P-01"]
+  AIF-051: ["RED-036", "EVAL-01", "EVAL-09"]
+  AIF-052: ["RED-036", "EVAL-09", "P-07"]
+  AIF-053: ["RED-020", "RED-028", "RED-041", "TEST-07", "COMPLETE-06", "EVAL-10"]
+  AIF-054: ["RED-001", "EVAL-12", "P-08"]
+  AIF-055: ["RED-013", "RED-024", "EVAL-06", "P-03"]
 
 first_red_gate:
   gate_id: FIRST-RED-GATE

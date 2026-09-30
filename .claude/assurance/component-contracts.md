@@ -772,7 +772,7 @@ All eight contracts (`C-01`..`C-08`) share the 14-type Semantic Kernel specified
 13. `CompletionResult` (`request_id`, `acceptance_expression`, `status`, `evaluated_claims[]`, `satisfied_requirements[]`, `unmet_requirements[]`, `blockers[]`, `unknowns[]`, `evidence_refs[]`, `evaluated_snapshot`, `generated_at`)
 14. `ArenaEvidenceReceipt` (`schema_version: "aif/0.1"`, uniting all Semantic Kernel objects; `CompletionGate = Evaluate(AcceptanceExpression, ArenaEvidenceReceipt)`)
 
-### Expanded Invariant Set (`AIF-001` – `AIF-020` + Sub-Invariants `AIF-001A` – `AIF-014A`)
+### Expanded Invariant Set (`AIF-001` – `AIF-020` Core + 8 Explicitly Defined Sub-Invariants `AIF-001A, 002A, 003A, 004A, 005A, 006A, 008A, 014A`; Full `AIF-0.1.0` Surface `AIF-001`..`AIF-055` in [`../skills/_shared/aif/invariants.md`](../skills/_shared/aif/invariants.md))
 
 | Invariant ID | Formal Statement | Canonical Type / Contract Binding |
 |---|---|---|

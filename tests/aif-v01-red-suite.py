@@ -80,13 +80,15 @@ def load_cases_yaml(path: Path) -> Dict[str, Any]:
             k, v = raw.strip().split(": ", 1)
             corpus_meta[k] = unquote(v)
             continue
-        if top_section == "invariant_range":
+        if top_section in ("invariants", "invariant_range"):
             if raw.startswith("  ") and not raw.startswith("    ") and ": " in raw:
                 k, v = raw.strip().split(": ", 1)
                 invariant_range_meta[k] = unquote(v)
                 continue
             if raw.startswith("    - "):
-                invariant_range_meta["sub_invariants"].append(unquote(raw.strip()[2:]))
+                sub_val = unquote(raw.strip()[2:])
+                if sub_val not in invariant_range_meta["sub_invariants"]:
+                    invariant_range_meta["sub_invariants"].append(sub_val)
                 continue
         if raw.startswith("  - test_id: "):
             top_section = "cases"
