@@ -1,11 +1,12 @@
 # AIF-0.1 Normative Invariants (`invariants.md`)
 
-- **Protocol Version**: `0.1.0` ([`VERSION`](./VERSION))
-- **Status**: `PHASE 2 KERNEL FREEZE CANDIDATE`
+- **Protocol Family**: `AIF-0.1`
+- **Concrete Frozen Version**: `0.1.0` ([`VERSION`](./VERSION))
+- **Status**: `FROZEN AIF-0.1.0 KERNEL CONTRACT (55 Invariants + 8 Sub-Invariants = 63 Normative Rules)`
 
 ---
 
-## 1. The 20 Primary Invariants (`AIF-001` .. `AIF-020`) & Sub-Invariants
+## 1. The 55 Normative Invariants (`AIF-001` .. `AIF-055`) & 8 Sub-Invariants (`AIF-001A` .. `AIF-014A`)
 
 ### `AIF-001` — Authority Precedes Mutation (Reality-Preserving Rule)
 - **Rule**: Legitimate mutation requires prior `ADMITTED` status in `AdmissionRecord` backed by an `AUTHORIZED` `AuthorityEvent`. Because unauthorized execution can occur in reality, `EXECUTED(action)` never implies `AUTHORIZED(action)`:

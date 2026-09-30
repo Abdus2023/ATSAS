@@ -108,7 +108,7 @@ else
 fi
 
 echo ""
-echo "=== 5. Validating .claude/assurance/ Artifacts, 42-Case Matrix & 8 Component Contracts ==="
+echo "=== 5. Validating .claude/assurance/ Artifacts, 55-Invariant Kernel, 49-Case Corpus & 8 Component Contracts ==="
 for assurance_doc in \
   .claude/assurance/invariants.md \
   .claude/assurance/test-matrix.md \
@@ -187,11 +187,15 @@ for t_name in canonical_types:
     assert f"`{t_name}`" in contracts_text, f"Missing {t_name} in component-contracts.md"
     assert f"`{t_name}`" in layout_text, f"Missing {t_name} in semantic-kernel-layout-review.md"
     assert t_name in cdm_schema.get("$defs", {}), f"Missing {t_name} in schemas/aif-canonical-data-model.schema.json $defs"
+
+invariants_md = Path(".claude/skills/_shared/aif/invariants.md").read_text(encoding="utf-8")
+for i in range(1, 56):
+    assert f"### `AIF-{i:03d}`" in invariants_md, f"Missing AIF-{i:03d} in .claude/skills/_shared/aif/invariants.md"
 PY
 then
-  pass "All 14 Semantic Kernel Types, 8 contracts (C-01..C-08), 20+8 invariants (AIF-001..020 + A), and layout review verified"
+  pass "All 14 core Semantic Kernel Types (across 13 modular schemas), 8 contracts (C-01..C-08), 55 invariants (AIF-001..055) + 8 sub-invariants, and layout review verified"
 else
-  fail "AIF v0.1 Canonical Data Model or freeze review verification failed"
+  fail "AIF-0.1.0 Canonical Data Model, 55-invariant kernel, or freeze review verification failed"
 fi
 
 for aai_id in AAI-001 AAI-002 AAI-003 AAI-004 AAI-005 AAI-006 AAI-007 AAI-008 AAI-009 AAI-010 AAI-011; do
@@ -287,9 +291,9 @@ for cap_str in cap_paths:
         assert f"`{label}`" in cap_text, f"Missing classification {label} in {cap_str}"
 PY
 then
-  pass "All 44 cases (AAI-001..036, P-001..008) & all 14 existing skills verified across matrices and capability maps"
+  pass "All 22 skills (14 imported + 8 Wave-1 AIF skills), 49 behavioral cases in cases.yaml, & historical Phase 0/1 capability maps verified"
 else
-  fail "44-case or 14-skill capability audit verification failed"
+  fail "22-skill or behavioral corpus capability audit verification failed"
 fi
 
 for w_id in W1 W2 W3 W4 W5 W6 W7 W8; do

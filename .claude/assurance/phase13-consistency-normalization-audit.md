@@ -1,46 +1,55 @@
-# Phase 13 & Phase 14 — Consistency / Normalization Audit & Execution Verification
+# Phase 13 & Phase 14 — Consistency / Normalization Audit & Current-Snapshot Execution Verification
 
-- **Protocol Version**: `AIF-0.1.0` ([`../skills/_shared/aif/VERSION`](../skills/_shared/aif/VERSION))
-- **Canonical Test Entrypoint**: `./tests/run-tests.sh`
+- **Protocol Family**: `AIF-0.1`
+- **Concrete Frozen Version**: `0.1.0` ([`../skills/_shared/aif/VERSION`](../skills/_shared/aif/VERSION))
+- **Evaluated Branch**: `arena/01a0ecca-atsas` (supersedes historical snapshot `15f7fa01778f06821d1c5c9c285bb0d666e04f8b` preserved in [`phase12-interface-freeze-audit.md`](./phase12-interface-freeze-audit.md))
+- **Canonical Runner**: [`tests/aif-v01-red-suite.py`](../../tests/aif-v01-red-suite.py) (invoked via [`./tests/run-tests.sh`](../../tests/run-tests.sh))
 
 ---
 
-## 1. Phase 13 — Resolution of the 6 Specification Drift Findings
+## 1. Frozen Normalization Authority (`Phase 13`)
 
-| # | Drift Finding Identified | Root Cause | Resolution Applied & Verified |
+```text
+AIF_PROTOCOL_FAMILY : AIF-0.1
+AIF_VERSION         : 0.1.0
+INVARIANTS          : AIF-001 .. AIF-055 (55 primary + 8 *A sub-invariants = 63 normative rules)
+BEHAVIORAL CORPUS   : 41 RED + 8 PRESSURE = 49 total (in .claude/skills/_shared/aif/tests/cases.yaml)
+SKILLS              : 22 (14 imported + 8 Wave-1 C-01..C-08)
+SCHEMAS             : 13 modular JSON Schemas in .claude/skills/_shared/aif/schema/ (encoding the 14 core types)
+CANONICAL RUNNER    : tests/aif-v01-red-suite.py (orchestrated by ./tests/run-tests.sh)
+LEGACY RUNNER       : .agent/tools/aif-red-suite -> explicit compatibility wrapper delegating to tests/aif-v01-red-suite.py
+```
+
+---
+
+## 2. Phase-13 Patch Set Verification Matrix (`P0` / `P1` / `P2`)
+
+| Priority | File / Area | Drift Resolved | Status |
 |---|---|---|---|
-| **1** | **Phase-12 audit had a stale `HEAD = 15f7fa0` header** | Line 4 of `phase12-interface-freeze-audit.md` still referenced `15f7fa0` after `ea23125` was committed | Updated [`.claude/assurance/phase12-interface-freeze-audit.md`](./phase12-interface-freeze-audit.md) to record the full commit progression (`S0 = 15f7fa0 → S1 = ea23125 → S2 = b9a9ce5 → Phase 13/14`). |
-| **2** | **AIF invariant count evolved to `AIF-001..AIF-055` (`63` rules with `8` `*A` sub-invariants), while comments still said `20` or `28`** | `tests/aif-v01-red-suite.py`, `_shared/aif/README.md`, and `_shared/aif/tests/README.md` retained Phase 2 headings | Normalized `tests/aif-v01-red-suite.py`, `_shared/aif/README.md`, and `_shared/aif/tests/README.md` (adding `AIF-049..AIF-055` rows to the 55-invariant coverage table). |
-| **3** | **Behavioral corpus count in `cases.yaml` is `49` (`41 RED + 8 PRESSURE`), while headers still said `44` (`36 RED + 8 PRESSURE`)** | `RED-037..RED-041` were added in Phase 4 without updating the file headers in `cases.yaml`, `oracle.md`, `tests/README.md`, and `tests/aif-v01-red-suite.py` | Normalized all references to `49` behavioral cases (`41 RED + 8 PRESSURE`) in `cases.yaml`, `oracle.md`, `_shared/aif/tests/README.md`, `_shared/aif/README.md`, `tests/aif-v01-red-suite.py`, and `tests/run-tests.sh`. |
-| **4** | **`.agent/tools/aif-red-suite` expected old `VERSION == 0.1` and `28` tests** | `.agent/` was packaged during Phase 1 before `VERSION` became `0.1.0` and invariants expanded to `AIF-055` | Upgraded `.agent/skills/_shared/aif/VERSION` to `0.1.0` and upgraded `.agent/tools/aif-red-suite` to verify `VERSION == 0.1.0` and delegate directly to the canonical `tests/aif-v01-red-suite.py`. |
-| **5** | **`tests/run-tests.sh` printed `"All 14 imported Agent Skills"` while validating all `22` skills** | Output string was not updated when Wave-1 skills `C-01..C-08` were added to `.claude/skills/` | Updated `tests/run-tests.sh` output to `"All 22 Agent Skills in .claude/skills/ (14 imported + 8 Wave-1 AIF skills)"` and updated `README.md` and `.claude/skills/README.md` to index all `22` skills. |
-| **6** | **No `.github/workflows/` on `ATSAS` branch** | `ATSAS` has local test suites (`./tests/run-tests.sh`) but no `.github/workflows/` directory | Explicitly recorded in `phase12-interface-freeze-audit.md`: `CI_CONFIGURED = NOT_OBSERVED`, `CI_EXECUTED = NOT_OBSERVED`, `CI_PASSED = NOT_OBSERVED` (distinguishing unconfigured remote CI from local test execution per `AIF-004`, `AIF-008`, `AIF-028`). |
+| **P0** | [`.claude/skills/_shared/aif/invariants.md`](../skills/_shared/aif/invariants.md) | Replaced obsolete `"The 20 Primary Invariants (AIF-001 .. AIF-020)"` heading with `"The 55 Normative Invariants (AIF-001 .. AIF-055) & 8 Sub-Invariants (AIF-001A .. AIF-014A)"` (`FROZEN AIF-0.1.0 KERNEL CONTRACT`). | `VERIFIED` |
+| **P0** | [`.claude/skills/_shared/aif/tests/cases.yaml`](../skills/_shared/aif/tests/cases.yaml) | Changed header and description from `44-Case (36 RED + 8 PRESSURE)` to `49-Case (41 RED + 8 PRESSURE)`. | `VERIFIED` |
+| **P0** | [`.claude/skills/_shared/aif/tests/README.md`](../skills/_shared/aif/tests/README.md) | Rebuilt corpus and coverage description around `49` cases (`41 RED + 8 PRESSURE`) and all `55` invariants (`AIF-001 .. AIF-055`). | `VERIFIED` |
+| **P0** | [`.claude/skills/_shared/aif/tests/oracle.md`](../skills/_shared/aif/tests/oracle.md) | Normalized behavioral corpus count to `41 RED + 8 PRESSURE = 49 cases` and aligned 4-level Oracle terminology. | `VERIFIED` |
+| **P0** | [`tests/aif-v01-red-suite.py`](../../tests/aif-v01-red-suite.py) | Updated module documentation, layout check (`10 producer contracts`), section comments (`63 RED invariant tests`), and coverage assertion (`All 55 primary invariants AIF-001 .. AIF-055 + 8 sub-invariants`). | `VERIFIED` |
+| **P0** | [`.agent/tools/aif-red-suite`](../../.agent/tools/aif-red-suite) | Converted from stale Phase 0/1 (`VERSION == 0.1`, `28` tests, embedded `15f7fa0`) runner into an explicit `AIF-0.1.0` compatibility wrapper delegating directly to `tests/aif-v01-red-suite.py`. | `VERIFIED` |
+| **P1** | [`tests/run-tests.sh`](../../tests/run-tests.sh) | Removed stale `14-skill`, `44-case`, and `20+8` terminology; added programmatic assertions over `VERSION == 0.1.0`, `55` invariants in `invariants.md`, `49` cases in `cases.yaml`, and all `22` skills. | `VERIFIED` |
+| **P1** | [`.claude/assurance/phase12-interface-freeze-audit.md`](./phase12-interface-freeze-audit.md) | Preserved original `HEAD = 15f7fa01778f06821d1c5c9c285bb0d666e04f8b` (`DIRTY`) snapshot and marked it with an explicit `HISTORICAL SNAPSHOT NOTICE` (`AIF-041` & `AIF-047`) so historical evidence is never laundered into current-snapshot evidence. | `VERIFIED` |
+| **P1** | [`.claude/assurance/phase13-consistency-normalization-audit.md`](./phase13-consistency-normalization-audit.md) | Created this current-snapshot audit recording fresh execution verification after normalization. | `VERIFIED` |
+| **P1** | [`bin/aif-verify`](../../bin/aif-verify) | Aligned header docstring with the actual `55`-invariant (`AIF-001 .. AIF-055` + `8` sub-invariants = `63` rules) implementation and `13` modular schemas. | `VERIFIED` |
+| **P2** | [`.claude/skills/_shared/aif/compatibility.md`](../skills/_shared/aif/compatibility.md) | Explicitly defined `AIF-0.1` as the **protocol family** name and `AIF-0.1.0` (`VERSION = 0.1.0`) as the **concrete frozen version**. | `VERIFIED` |
 
 ---
 
-## 2. Schema & Layer Reconciliations (`Phase 13`)
+## 3. Phase 14 — Fresh Current-Snapshot Execution Verification
 
-### 2.1 Reconciliation of `13` Modular JSON Schemas vs `14` Core Semantic Kernel Types (`+ 3` Evaluation Types)
-- **14 Core Repository Assurance Types**: `SnapshotRef`, `AuthorityEvent`, `Request`, `AdmissionRecord`, `ExecutionRecord`, `ChangeRecord`, `Claim`, `EvidenceRef`, `EvidenceCoverage`, `VerificationRecord`, `Finding`, `AcceptanceExpression`, `CompletionResult`, `ArenaEvidenceReceipt`.
-- **Why `.claude/skills/_shared/aif/schema/` contains `13` JSON Schema files**:
-  - `common.schema.json` defines shared primitives **plus** `$defs/EvidenceCoverage` and `$defs/Finding` (`2` core types).
-  - The remaining `12` files (`snapshot-ref.schema.json`, `request.schema.json`, `authority-event.schema.json`, `admission-record.schema.json`, `execution-record.schema.json`, `change-record.schema.json`, `claim.schema.json`, `evidence-ref.schema.json`, `verification-record.schema.json`, `acceptance-expression.schema.json`, `completion-result.schema.json`, `evidence-receipt.schema.json`) each define `1` primary core type (`2 + 12 = 14` core conceptual types across `13` modular schema files).
-- **Phase 11 Meta-Assurance Types (`12.19`)**: `EvaluationCase`, `EvaluationResult`, and `EvaluationSuiteResult` (plus `EvaluationBaseline`).
+All verification suites were executed fresh against the normalized working tree:
 
-### 2.2 Reconciliation of `.claude/` vs `.agent/` Responsibilities
-- **`.claude/skills/` + `.claude/assurance/`**: The **canonical `AIF-0.1.0` implementation layer** (`22` active skills + non-skill semantic kernel `.claude/skills/_shared/aif/`).
-- **`.agent/`**: The **Phase 0/1 bootstrap process archive & CLI wrapper toolkit** (`9` meta-engineering process skills + `7` CLI wrappers). `.agent/tools/aif-red-suite` delegates directly to `tests/aif-v01-red-suite.py`.
-- **Single Canonical Test Entrypoint**: `./tests/run-tests.sh`.
-
----
-
-## 3. Phase 14 — Execution Verification Matrix
-
-| Verification Target | Command | Observed Result |
+| Suite / Validator | Command | Fresh Observed Result |
 |---|---|---|
-| **1. AIF-0.1.0 Kernel & 49-Case RED/Pressure Suite** | `python3 tests/aif-v01-red-suite.py` | `145 passed, 0 failed` (`13` schemas, `63` invariant mutators `AIF-001..055`, `49` behavioral cases in `cases.yaml`, `15` adapter cases) |
-| **2. Legacy `.agent/tools/aif-red-suite` Wrapper** | `./.agent/tools/aif-red-suite` | `145 passed, 0 failed` (verifies `VERSION == 0.1.0` in both `.claude` & `.agent` and delegates to `tests/aif-v01-red-suite.py`) |
-| **3. Wave-1 Component Self-Tests (`C-01`..`C-08`)** | `evaluate_intake.py` (`14/14`), `audit_change_scope.py` (`9/9`), `audit_supply_chain.py` (`16/16`), `audit_ci_workflow.py` (`21/21`), `audit_test_execution.py` (`27/27`), `generate_receipt.py` (`19/19`), `evaluate_completion.py` (`22/22`), `run_suite.py` (`13/13`) | `141/141` component self-test assertions `PASS` |
+| **1. Canonical AIF-0.1.0 Kernel & RED Suite** | `python3 tests/aif-v01-red-suite.py` | `145 passed, 0 failed` (`13` schemas, `63` invariant mutators `AIF-001..055`, `49` behavioral cases in `cases.yaml`, `15` producer adapter cases) |
+| **2. Compatibility Wrapper** | `./.agent/tools/aif-red-suite` | `145 passed, 0 failed` (verifies `VERSION == 0.1.0` in `.claude` & `.agent` and delegates to `tests/aif-v01-red-suite.py`) |
+| **3. Wave-1 Skill Self-Tests (`C-01`..`C-08`)** | `evaluate_intake.py` (`14/14`), `audit_change_scope.py` (`9/9`), `audit_supply_chain.py` (`16/16`), `audit_ci_workflow.py` (`21/21`), `audit_test_execution.py` (`27/27`), `generate_receipt.py` (`19/19`), `evaluate_completion.py` (`22/22`), `run_suite.py` (`13/13`) | `141 passed, 0 failed` across all 8 Wave-1 components |
 | **4. 22-Skill Structural & `SCOPE:` Validation** | `python3 .claude/skills/skill-creator/scripts/validate_skill.py --all .claude/skills` | `22 skill(s) checked, 0 error(s)` |
-| **5. `aif-eval-corpus-0.2` Harness Suite** | `python3 .claude/skills/skill-evaluation-harness/scripts/generate_report.py` | `79 PASS, 0 FAIL, 0 NOT_OBSERVABLE` (`65 RED`, `11 PRESSURE`, `3 GREEN`) |
-| **6. Canonical Full Repository Test Entrypoint** | `./tests/run-tests.sh` | `118 passed, 0 failed` (`exit_code = 0`) |
+| **5. Evaluation Harness Corpus (`aif-eval-corpus-0.2`)** | `python3 .claude/skills/skill-evaluation-harness/scripts/generate_report.py` | `79 PASS, 0 FAIL, 0 NOT_OBSERVABLE` (`65 RED`, `11 PRESSURE`, `3 GREEN`) |
+| **6. Canonical Full Repository Test Runner** | `./tests/run-tests.sh` | `119 passed, 0 failed` (`exit_code = 0`) |
+| **7. GitHub Actions / Remote CI Status** | `.github/workflows/` inspection | `CI_CONFIGURED = NOT_OBSERVED`, `CI_EXECUTED = NOT_OBSERVED`, `CI_PASSED = NOT_OBSERVED` (recorded as unconfigured/unobserved per `AIF-004`, `AIF-008`, `AIF-028`) |

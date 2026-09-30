@@ -1,13 +1,24 @@
 # AIF-0.1 Protocol Compatibility & Skill Contract (`compatibility.md`)
 
-- **Protocol Version**: `0.1.0` ([`VERSION`](./VERSION))
-- **Status**: `PHASE 2 KERNEL FREEZE CANDIDATE`
+- **Protocol Family**: `AIF-0.1`
+- **Concrete Frozen Version**: `0.1.0` ([`VERSION`](./VERSION))
+- **Status**: `FROZEN AIF-0.1.0 KERNEL CONTRACT`
 
 ---
 
-## 1. Version Pinning (`VERSION = 0.1.0`)
+## 1. Protocol Family (`AIF-0.1`) vs Concrete Frozen Version (`0.1.0`)
 
-`.claude/skills/_shared/aif/VERSION` contains the exact semantic version string:
+To avoid unnecessary naming migrations across documentation and schemas, ATSAS distinguishes:
+
+```text
+AIF-0.1
+  protocol family (human-readable specification & architecture family)
+
+AIF-0.1.0 (VERSION = 0.1.0)
+  concrete frozen semantic version
+```
+
+`.claude/skills/_shared/aif/VERSION` (and `.agent/skills/_shared/aif/VERSION`) contains the exact semantic version string:
 
 ```text
 0.1.0

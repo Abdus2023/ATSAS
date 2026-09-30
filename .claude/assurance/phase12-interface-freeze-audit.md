@@ -1,7 +1,9 @@
-# Phase 12 — Cross-Skill Consolidation, Responsibility Freeze & Branch Audit
+# Phase 12 — Cross-Skill Consolidation, Responsibility Freeze & Branch Audit (Historical Snapshot)
 
-- **Protocol Version**: `AIF-0.1.0` ([`../skills/_shared/aif/VERSION`](../skills/_shared/aif/VERSION))
-- **Evaluated Branch**: `arena/01a0ecca-atsas` (`S0 = 15f7fa0` initial commit $\to$ `S1 = ea23125` implementation commit $\to$ `S2 = b9a9ce5` $\to$ Phase 13/14 normalized state)
+> **HISTORICAL SNAPSHOT NOTICE (`AIF-041` & `AIF-047`)**: This document records the Phase-12 audit captured against snapshot `HEAD = 15f7fa01778f06821d1c5c9c285bb0d666e04f8b` (working tree `DIRTY`) prior to commit `ea231253dc6e2b0a04bd58282bf4f1e515c8009a`. Per `AIF-047` (*Historical Snapshot Preservation*), its execution claims (`145/145 PASS`, `22/22 PASS`) remain bound to that historical pre-commit snapshot and must not be treated as verification evidence for later commits. See [`.claude/assurance/phase13-consistency-normalization-audit.md`](./phase13-consistency-normalization-audit.md) for the current-snapshot normalization and fresh execution verification.
+
+- **Protocol Family / Version**: `AIF-0.1` / `0.1.0` ([`../skills/_shared/aif/VERSION`](../skills/_shared/aif/VERSION))
+- **Historical Evaluated Snapshot**: `arena/01a0ecca-atsas` (`HEAD = 15f7fa01778f06821d1c5c9c285bb0d666e04f8b`, `working_tree_state = DIRTY`)
 - **Evaluated Corpus**: `cases.yaml` (`41 RED + 8 PRESSURE = 49` core cases) & `aif-eval-corpus-0.2` (`79` harness cases)
 
 ---
@@ -102,13 +104,14 @@ NO OTHER SKILL may silently perform either role.
 
 ---
 
-## 5. Ground-Truth Branch & CI Observability Audit (`arena/01a0ecca-atsas`)
+## 5. Historical Pre-Commit Branch Snapshot (`HEAD = 15f7fa01778f06821d1c5c9c285bb0d666e04f8b`, `DIRTY`)
 
-| Dimension | Observed State | Evidence |
+| Dimension | Historical Observed State (at Phase-12 capture) | Evidence |
 |---|---|---|
-| **Branch** | `arena/01a0ecca-atsas` (tracking `origin/arena/01a0ecca-atsas`) | `git status -sb` |
-| **Commit Progression** | `S0 = 15f7fa0` (`Initial commit`) $\to$ `S1 = ea23125` (AIF-0.1.0 kernel, 22 skills `C-01..C-08`, evaluation harness) $\to$ `S2 = b9a9ce5` $\to$ Phase 13/14 normalized commit | `git log --oneline` |
-| **`.claude/skills/_shared/aif/` Kernel** | `PRESENT` & `VERIFIED` (`VERSION = 0.1.0`, 7 docs, 13 modular JSON schemas encoding the 14 core types, 3 test files with 49 behavioral cases in `cases.yaml`, 10 producer contracts, 0 runtime code files) | `python3 tests/aif-v01-red-suite.py` (`145/145 PASS`) |
-| **`.claude/skills/` Inventory** | `22` validated skills (`14` imported StreamForge skills + `8` Wave-1 AIF skills `C-01`..`C-08`) | `validate_skill.py --all .claude/skills` (`22/22 PASS`) |
-| **GitHub Actions / CI Observability** | `.github/workflows/` is `NOT PRESENT` on this branch (`CI_CONFIGURED = NOT_OBSERVED`, `CI_EXECUTED = NOT_OBSERVED`, `CI_PASSED = NOT_OBSERVED`). Per `AIF-004`, `AIF-008`, and `AIF-028`, this records absence of remote GitHub Actions execution evidence, **not** local test failure. | `ci-workflow-audit` (`NOT_FOUND` observation) |
-| **Canonical Local Test Entrypoint** | `./tests/run-tests.sh` | All `117/117` repository checks passing |
+| **Branch** | `arena/01a0ecca-atsas` | `git status -sb` |
+| **`HEAD` Commit at Capture** | `15f7fa01778f06821d1c5c9c285bb0d666e04f8b` (`Initial commit`) | `git log -n 1 --oneline` |
+| **Working Tree State at Capture** | `DIRTY` (`M README.md` + untracked directories `.claude/`, `bin/`, `schemas/`, `spec/`, `examples/`, `tests/`, `.agent/` prior to commit `ea231253dc6e2b0a04bd58282bf4f1e515c8009a`) | `git status --short` |
+| **`.claude/skills/_shared/aif/` Kernel** | `PRESENT` & `VERIFIED` (`VERSION = 0.1.0`, 7 docs, 13 modular JSON schemas, 3 test files with 49 behavioral cases in `cases.yaml`, 10 producer contracts, 0 runtime code files) | `python3 tests/aif-v01-red-suite.py` (`145/145 PASS` at historical capture) |
+| **`.claude/skills/` Inventory** | `22` validated skills (`14` imported StreamForge skills + `8` Wave-1 AIF skills `C-01`..`C-08`) | `validate_skill.py --all .claude/skills` (`22/22 PASS` at historical capture) |
+| **GitHub Actions / CI Observability** | `.github/workflows/` is `NOT PRESENT` on this branch (`CI_CONFIGURED = NOT_OBSERVED`, `CI_EXECUTED = NOT_OBSERVED`, `CI_PASSED = NOT_OBSERVED`). | `ci-workflow-audit` (`NOT_FOUND` observation) |
+

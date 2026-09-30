@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-aif-verify — Reference Schema & Normative Invariant Validator for ATSAS and AIF.
+aif-verify — Reference Schema & Normative Invariant Validator for ATSAS and AIF-0.1 (`0.1.0`).
 
 Zero-dependency portable CLI that validates:
-  1. Structural conformance against the JSON Schemas in schemas/
-  2. Semantic conformance against the AIF Assurance Invariants (AIF-INV-001 .. AIF-INV-008
-     and Canonical Data Model Invariants AIF-001 .. AIF-020 + sub-invariants)
+  1. Structural conformance against the JSON Schemas in schemas/ and .claude/skills/_shared/aif/schema/ (13 modular schemas)
+  2. Semantic conformance against the AIF Assurance Invariants:
+     - AIF-001 .. AIF-055 (55 primary invariants) + 8 sub-invariants (AIF-001A .. AIF-014A) = 63 normative rules
+     - AIF-INV-001 .. AIF-INV-008 & AAI-001 .. AAI-011
 
 Usage:
   ./bin/aif-verify <manifest-or-contract.json> [--schema <schema.json>] [--json]
